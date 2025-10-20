@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}{{ user.username }} - Mobile Legends Community{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex align-items-start">
+                    <i class="fas fa-user-circle fa-4x text-muted me-4"></i>
+                    <div class="flex-grow-1">
+                        <h2 class="card-title">{{ user.username }}</h2>
+                        <p class="text-muted mb-2">
+                            <i class="fas fa-calendar me-1"></i>
+                            Участник с {{ user.created_at.strftime('%d.%m.%Y') }}
+                        </p>
+                        {% if user.bio %}
+                        <p class="card-text">{{ user.bio }}</p>
+                        {% endif %}
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-primary me-2">Уровень {{ user.level }}</span>
+                            <div class="progress flex-grow-1 me-3" style="height: 20px;">
+                                <div class="progress-bar" role="progressbar" style="width: {{ (user.experience % 1000) / 10 }}%">
+                                    {{ user.experience }} XP
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h4 class="mb-3">Посты пользователя ({{ posts|length }})</h4>
+        
+        {% for post in posts %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <h6 class="card-title">
+                        <a href="{{ url_for('post_detail', post_id=post.id) }}" class="text-decoration-none">
+                            {{ post.title }}
+                        </a>
+                    </h6>
+                    {% if post.hero %}
+                    <span class="badge bg-primary">{{ post.hero.name }}</span>
+                    {% endif %}
+                </div>
+                <p class="card-text">{{ post.content[:150] }}{% if post.content|length > 150 %}...{% endif %}</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                        <i class="fas fa-clock me-1"></i>{{ post.created_at.strftime('%d.%m.%Y %H:%M') }}
+                    </small>
+                    <div>
+                        <span class="badge bg-success me-2">
+                            <i class="fas fa-thumbs-up me-1"></i>{{ post.likes }}
+                        </span>
+                        <span class="badge bg-info">
+                            <i class="fas fa-eye me-1"></i>{{ post.views }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        
+        {% if not posts %}
+        <div class="text-center py-4">
+            <i class="fas fa-newspaper fa-2x text-muted mb-2"></i>
+            <p class="text-muted">У пользователя пока нет постов</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Статистика</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h4 class="text-primary">{{ posts|length }}</h4>
+                        <small class="text-muted">Постов</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-success">{{ achievements|length }}</h4>
+                        <small class="text-muted">Достижений</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if achievements %}
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Достижения</h5>
+            </div>
+            <div class="card-body">
+                {% for achievement in achievements %}
+                <div class="d-flex align-items-center mb-3">
+                    <i class="fas fa-trophy fa-2x text-warning me-3"></i>
+                    <div>
+                        <h6 class="mb-0">{{ achievement.achievement.name }}</h6>
+                        <small class="text-muted">{{ achievement.achievement.description }}</small>
+                        <br>
+                        <small class="text-success">
+                            <i class="fas fa-star me-1"></i>{{ achievement.achievement.points }} очков
+                        </small>
+                    </div>
+                </div>
+                {% if not loop.last %}<hr>{% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

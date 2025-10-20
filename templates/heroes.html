@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Герои - Mobile Legends Community{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-users me-2"></i>Герои Mobile Legends
+    </h2>
+    <div class="btn-group" role="group">
+        <button type="button" class="btn btn-outline-primary active" data-filter="all">Все</button>
+        <button type="button" class="btn btn-outline-primary" data-filter="Tank">Танки</button>
+        <button type="button" class="btn btn-outline-primary" data-filter="Fighter">Бойцы</button>
+        <button type="button" class="btn btn-outline-primary" data-filter="Assassin">Убийцы</button>
+        <button type="button" class="btn btn-outline-primary" data-filter="Mage">Маги</button>
+        <button type="button" class="btn btn-outline-primary" data-filter="Marksman">Стрелки</button>
+        <button type="button" class="btn btn-outline-primary" data-filter="Support">Поддержка</button>
+    </div>
+</div>
+
+<div class="row" id="heroes-container">
+    {% for hero in heroes %}
+    <div class="col-lg-4 col-md-6 mb-4 hero-card" data-role="{{ hero.role }}">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="card-title">{{ hero.name }}</h5>
+                    <span class="badge bg-{{ 'primary' if hero.role == 'Tank' else 'success' if hero.role == 'Fighter' else 'danger' if hero.role == 'Assassin' else 'info' if hero.role == 'Mage' else 'warning' if hero.role == 'Marksman' else 'secondary' }}">{{ hero.role }}</span>
+                </div>
+                
+                <p class="card-text text-muted mb-3">{{ hero.description[:100] }}{% if hero.description|length > 100 %}...{% endif %}</p>
+                
+                <div class="mb-3">
+                    <small class="text-muted">
+                        <strong>Специализация:</strong> {{ hero.specialty }}<br>
+                        <strong>Сложность:</strong> 
+                        <span class="badge bg-{{ 'success' if hero.difficulty == 'Easy' else 'warning' if hero.difficulty == 'Medium' else 'danger' }}">
+                            {{ hero.difficulty }}
+                        </span>
+                    </small>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="rating">
+                        {% for i in range(5) %}
+                            {% if i < hero.rating %}
+                                <i class="fas fa-star text-warning"></i>
+                            {% else %}
+                                <i class="far fa-star text-muted"></i>
+                            {% endif %}
+                        {% endfor %}
+                        <span class="ms-1 text-muted">{{ hero.rating }}/5</span>
+                    </div>
+                    <a href="{{ url_for('hero_detail', hero_id=hero.id) }}" class="btn btn-sm btn-outline-primary">
+                        Подробнее
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if not heroes %}
+<div class="text-center py-5">
+    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+    <h4 class="text-muted">Герои не найдены</h4>
+    <p class="text-muted">Попробуйте изменить фильтр или зайти позже.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterButtons = document.querySelectorAll('[data-filter]');
+    const heroCards = document.querySelectorAll('.hero-card');
+    
+    filterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const filter = this.getAttribute('data-filter');
+            
+            // Обновляем активную кнопку
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Фильтруем карточки
+            heroCards.forEach(card => {
+                if (filter === 'all' || card.getAttribute('data-role') === filter) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

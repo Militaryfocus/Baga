@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }} - Mobile Legends Community{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h2 class="card-title">{{ post.title }}</h2>
+                    {% if post.hero %}
+                    <span class="badge bg-primary">{{ post.hero.name }}</span>
+                    {% endif %}
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-user-circle fa-2x text-muted me-3"></i>
+                        <div>
+                            <strong>{{ post.author.username }}</strong><br>
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>{{ post.created_at.strftime('%d.%m.%Y в %H:%M') }}
+                                {% if post.updated_at != post.created_at %}
+                                • <i class="fas fa-edit me-1"></i>Изменено {{ post.updated_at.strftime('%d.%m.%Y в %H:%M') }}
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-outline-success btn-sm">
+                                <i class="fas fa-thumbs-up me-1"></i>{{ post.likes }}
+                            </button>
+                            <button class="btn btn-outline-info btn-sm">
+                                <i class="fas fa-eye me-1"></i>{{ post.views }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="post-content">
+                    {{ post.content|replace('\n', '<br>')|safe }}
+                </div>
+            </div>
+        </div>
+
+        <h4 class="mb-3">Комментарии ({{ comments|length }})</h4>
+        
+        {% if current_user.is_authenticated %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_comment', post_id=post.id) }}">
+                    <div class="mb-3">
+                        <label for="content" class="form-label">Добавить комментарий</label>
+                        <textarea class="form-control" id="content" name="content" rows="3" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-comment me-2"></i>Комментировать
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            <a href="{{ url_for('login') }}">Войдите в систему</a>, чтобы оставить комментарий.
+        </div>
+        {% endif %}
+        
+        {% for comment in comments %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex align-items-start">
+                    <i class="fas fa-user-circle fa-2x text-muted me-3"></i>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <strong>{{ comment.author.username }}</strong>
+                            <small class="text-muted">{{ comment.created_at.strftime('%d.%m.%Y в %H:%M') }}</small>
+                        </div>
+                        <p class="mb-0">{{ comment.content|replace('\n', '<br>')|safe }}</p>
+                        <div class="mt-2">
+                            <button class="btn btn-outline-success btn-sm">
+                                <i class="fas fa-thumbs-up me-1"></i>{{ comment.likes }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        
+        {% if not comments %}
+        <div class="text-center py-4">
+            <i class="fas fa-comments fa-2x text-muted mb-2"></i>
+            <p class="text-muted">Пока нет комментариев. Станьте первым!</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Информация о посте</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h4 class="text-success">{{ post.likes }}</h4>
+                        <small class="text-muted">Лайков</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-info">{{ post.views }}</h4>
+                        <small class="text-muted">Просмотров</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="text-center">
+                    <small class="text-muted">
+                        <i class="fas fa-calendar me-1"></i>
+                        Создан {{ post.created_at.strftime('%d.%m.%Y') }}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        {% if post.hero %}
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Связанный герой</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center">
+                    <h6>{{ post.hero.name }}</h6>
+                    <span class="badge bg-primary me-2">{{ post.hero.role }}</span>
+                    <span class="badge bg-secondary">{{ post.hero.specialty }}</span>
+                    <p class="mt-2 text-muted small">{{ post.hero.description[:100] }}...</p>
+                    <a href="{{ url_for('hero_detail', hero_id=post.hero.id) }}" class="btn btn-sm btn-outline-primary">
+                        Подробнее о герое
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
