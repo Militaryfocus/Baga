@@ -46,20 +46,32 @@
 
 ## 🚀 Быстрый старт
 
-### 1. Клонирование и настройка
+### Для VDS (Production):
+```bash
+# Автоматическая установка
+sudo ./install-vds.sh
+
+# Обновление
+sudo ./update-vds.sh
+```
+
+### Для разработки (Development):
+
+#### 1. Клонирование и настройка
 ```bash
 git clone <repository-url>
 cd mobile-legends-fan-community
 ```
 
-### 2. Настройка переменных окружения
+#### 2. Настройка переменных окружения
 ```bash
 # Скопируйте файлы окружения
 cp .env.example .env
 cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
 ```
 
-### 3. Запуск в режиме разработки
+#### 3. Запуск в режиме разработки
 ```bash
 # Запуск всех сервисов
 docker-compose up --build
@@ -68,7 +80,7 @@ docker-compose up --build
 npm run dev
 ```
 
-### 4. Инициализация базы данных
+#### 4. Инициализация базы данных
 ```bash
 # Миграции
 npm run db:migrate
@@ -77,11 +89,13 @@ npm run db:migrate
 npm run db:seed
 ```
 
-### 5. Доступ к приложению
+#### 5. Доступ к приложению
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:3001/api
 - **API Documentation**: http://localhost:3001/api-docs
 - **Database**: localhost:5432
+
+> 📖 **Подробные инструкции**: См. [INSTALL_VDS.md](INSTALL_VDS.md) для установки на VDS или [QUICK_COMMANDS.md](QUICK_COMMANDS.md) для быстрых команд
 
 ## 📋 Тестовые пользователи
 
@@ -169,6 +183,15 @@ mobile-legends-fan-community/
 
 ## 🐳 Docker команды
 
+### Быстрые команды
+```bash
+# Установка на VDS
+sudo ./install-vds.sh
+
+# Обновление приложения
+sudo ./update-vds.sh
+```
+
 ### Разработка
 ```bash
 # Запуск всех сервисов
@@ -187,11 +210,16 @@ docker-compose down
 ### Продакшен
 ```bash
 # Запуск продакшен версии
-docker-compose -f docker-compose.prod.yml up --build
+docker-compose -f docker-compose.prod.yml up -d --build
+
+# Обновление без остановки
+docker-compose -f docker-compose.prod.yml up -d --build --no-deps backend frontend
 
 # Остановка
 docker-compose -f docker-compose.prod.yml down
 ```
+
+> 💡 **Больше команд**: См. [QUICK_COMMANDS.md](QUICK_COMMANDS.md)
 
 ## 🗄 База данных
 
@@ -242,20 +270,32 @@ cd backend && npx prisma studio
 - **Быстрая загрузка**
 - **Оптимизированные изображения**
 
-## 🚀 Деплой
+## 🚀 Деплой на VDS
 
-### Staging
+### Автоматическая установка
 ```bash
-docker-compose up --build
+# 1. Скачайте скрипт установки
+wget https://your-repo-url/install-vds.sh
+chmod +x install-vds.sh
+
+# 2. Запустите установку
+sudo ./install-vds.sh
+
+# 3. Следуйте инструкциям на экране
 ```
 
-### Production
+### Обновление на VDS
 ```bash
-# Настройте переменные окружения
-cp .env.prod.example .env.prod
+cd /opt/mobile-legends-community
+sudo ./update-vds.sh
+```
 
-# Запустите продакшен версию
-docker-compose -f docker-compose.prod.yml up --build
+### Ручная установка
+См. полное руководство: [INSTALL_VDS.md](INSTALL_VDS.md)
+
+### Staging (локально)
+```bash
+docker-compose up --build
 ```
 
 ## 🤝 Вклад в проект
