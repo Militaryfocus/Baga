@@ -49,6 +49,7 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
       PORT: 3001
       CORS_ORIGIN: ${CORS_ORIGIN}
+      API_DOCS_PATH: /api-docs
     depends_on:
       postgres:
         condition: service_healthy
