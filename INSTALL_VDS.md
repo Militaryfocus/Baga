@@ -210,12 +210,20 @@ docker compose -f docker-compose.prod.yml logs -f nginx
 
 ### Обновление приложения
 
+#### Автоматическое обновление (рекомендуется):
+```bash
+cd /opt/mobile-legends-community
+sudo ./update-vds.sh
+```
+
+#### Ручное обновление:
 ```bash
 # Получение последних изменений
 cd /opt/mobile-legends-community
 git pull origin main
 
 # Пересборка и перезапуск
+docker compose -f docker-compose.prod.yml down
 docker compose -f docker-compose.prod.yml up -d --build
 
 # Применение миграций (если есть)
