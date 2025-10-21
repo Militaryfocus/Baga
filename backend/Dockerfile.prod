@@ -5,9 +5,9 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
+# Install all dependencies for build (includes devDeps)
 COPY package.json package-lock.json* ./
-RUN npm install --only=production --legacy-peer-deps
+RUN npm ci
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -15,11 +15,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Generate Prisma Client
-RUN npx prisma generate
-
-# Build the application
-RUN npm run build
+# Generate Prisma Client and build the application
+RUN npx prisma generate && npm run build
 
 # Production image, copy all the files and run the app
 FROM base AS runner
@@ -27,7 +24,7 @@ WORKDIR /app
 
 ENV NODE_ENV production
 
-# Install curl for health checks
+# Runtime tools for healthcheck
 RUN apk add --no-cache curl
 
 RUN addgroup --system --gid 1001 nodejs
