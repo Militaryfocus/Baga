@@ -1,0 +1,107 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database - using Debian-based image as fallback
+  postgres:
+    image: postgres:15
+    container_name: ml_community_postgres_simple_prod
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data_simple_prod:/var/lib/postgresql/data
+    networks:
+      - ml_network_simple_prod
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Cache - using Debian-based image as fallback
+  redis:
+    image: redis:7
+    container_name: ml_community_redis_simple_prod
+    volumes:
+      - redis_data_simple_prod:/data
+    networks:
+      - ml_network_simple_prod
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend API - using simple production Dockerfile
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.simple.prod
+    container_name: ml_community_backend_simple_prod
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      PORT: 3001
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      API_DOCS_PATH: /api-docs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - ml_network_simple_prod
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend React App - using simple production Dockerfile
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.simple.prod
+    container_name: ml_community_frontend_simple_prod
+    environment:
+      VITE_API_URL: ${VITE_API_URL}
+      VITE_WS_URL: ${VITE_WS_URL}
+    depends_on:
+      - backend
+    networks:
+      - ml_network_simple_prod
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy - using Debian-based image as fallback
+  nginx:
+    image: nginx:1.25
+    container_name: ml_community_nginx_simple_prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - ml_network_simple_prod
+    restart: unless-stopped
+
+volumes:
+  postgres_data_simple_prod:
+  redis_data_simple_prod:
+
+networks:
+  ml_network_simple_prod:
+    driver: bridge

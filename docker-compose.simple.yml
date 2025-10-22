@@ -1,10 +1,10 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
+  # PostgreSQL Database - using Debian-based image as fallback
   postgres:
-    image: postgres:15-alpine
-    container_name: ml_community_postgres
+    image: postgres:15
+    container_name: ml_community_postgres_simple
     environment:
       POSTGRES_DB: mobile_legends_community
       POSTGRES_USER: ml_user
@@ -12,38 +12,38 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_simple:/var/lib/postgresql/data
       - ./backend/prisma/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
-      - ml_network
+      - ml_network_simple
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ml_user -d mobile_legends_community"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Redis Cache
+  # Redis Cache - using Debian-based image as fallback
   redis:
-    image: redis:7-alpine
-    container_name: ml_community_redis
+    image: redis:7
+    container_name: ml_community_redis_simple
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
+      - redis_data_simple:/data
     networks:
-      - ml_network
+      - ml_network_simple
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Backend API
+  # Backend API - using simple Dockerfile
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile.simple
-    container_name: ml_community_backend
+    container_name: ml_community_backend_simple
     environment:
       NODE_ENV: development
       DATABASE_URL: postgresql://ml_user:ml_password_2024@postgres:5432/mobile_legends_community
@@ -64,15 +64,15 @@ services:
       - /app/node_modules
       - ./uploads:/app/uploads
     networks:
-      - ml_network
+      - ml_network_simple
     command: npm run dev
 
-  # Frontend React App
+  # Frontend React App - using simple Dockerfile
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.simple
-    container_name: ml_community_frontend
+    container_name: ml_community_frontend_simple
     environment:
       VITE_API_URL: http://localhost:3001/api
       VITE_WS_URL: ws://localhost:3001
@@ -84,12 +84,12 @@ services:
       - ./frontend:/app
       - /app/node_modules
     networks:
-      - ml_network
+      - ml_network_simple
 
-  # Nginx Reverse Proxy
+  # Nginx Reverse Proxy - using Debian-based image as fallback
   nginx:
-    image: nginx:alpine
-    container_name: ml_community_nginx
+    image: nginx:1.25
+    container_name: ml_community_nginx_simple
     ports:
       - "80:80"
       - "443:443"
@@ -100,13 +100,13 @@ services:
       - backend
       - frontend
     networks:
-      - ml_network
+      - ml_network_simple
     restart: unless-stopped
 
 volumes:
-  postgres_data:
-  redis_data:
+  postgres_data_simple:
+  redis_data_simple:
 
 networks:
-  ml_network:
+  ml_network_simple:
     driver: bridge

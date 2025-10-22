@@ -4,27 +4,50 @@ FROM node:18-alpine AS base
 FROM base AS deps
 WORKDIR /app
 
-# Configure Alpine repositories with multiple mirrors and retry logic
+# Enhanced Alpine repository configuration with multiple mirrors and robust retry logic
 RUN set -e; \
+    echo "=== Configuring Alpine repositories ==="; \
     echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/main" > /etc/apk/repositories; \
     echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories; \
     echo "https://mirror.yandex.ru/mirrors/alpine/v3.18/main" >> /etc/apk/repositories; \
     echo "https://mirror.yandex.ru/mirrors/alpine/v3.18/community" >> /etc/apk/repositories; \
     echo "https://mirror1.alpinelinux.org/alpine/v3.18/main" >> /etc/apk/repositories; \
     echo "https://mirror1.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories; \
-    for i in 1 2 3; do \
-        apk update --no-cache && break || sleep 5; \
+    echo "https://mirrors.ustc.edu.cn/alpine/v3.18/main" >> /etc/apk/repositories; \
+    echo "https://mirrors.ustc.edu.cn/alpine/v3.18/community" >> /etc/apk/repositories; \
+    echo "https://mirror.leaseweb.com/alpine/v3.18/main" >> /etc/apk/repositories; \
+    echo "https://mirror.leaseweb.com/alpine/v3.18/community" >> /etc/apk/repositories; \
+    echo "=== Updating package index with retry logic ==="; \
+    for i in 1 2 3 4 5; do \
+        echo "Attempt $i/5: Updating package index..."; \
+        apk update --no-cache && echo "Package index updated successfully" && break || \
+        (echo "Attempt $i failed, waiting 10 seconds before retry..." && sleep 10); \
     done; \
-    apk add --no-cache libc6-compat
+    echo "=== Installing required packages ==="; \
+    apk add --no-cache --virtual .build-deps libc6-compat python3 make g++ || \
+    (echo "Primary package installation failed, trying alternative approach..." && \
+     apk update --no-cache && \
+     apk add --no-cache --virtual .build-deps libc6-compat python3 make g++); \
+    echo "=== Package installation completed ==="
 
 # Install all dependencies for build (includes devDeps)
 COPY package.json package-lock.json* ./
 
-# Configure npm for better reliability
-RUN npm config set fetch-retries 5 && \
-    npm config set fetch-retry-mintimeout 20000 && \
-    npm config set fetch-retry-maxtimeout 120000 && \
-    npm ci --prefer-offline --no-audit
+# Enhanced npm configuration with robust error handling
+RUN echo "=== Configuring npm for better reliability ===" && \
+    npm config set fetch-retries 10 && \
+    npm config set fetch-retry-mintimeout 30000 && \
+    npm config set fetch-retry-maxtimeout 300000 && \
+    npm config set fetch-timeout 300000 && \
+    npm config set registry https://registry.npmjs.org/ && \
+    echo "=== Installing dependencies with retry logic ===" && \
+    for i in 1 2 3; do \
+        echo "Dependency installation attempt $i/3..."; \
+        npm ci --prefer-offline --no-audit --no-fund && \
+        echo "Dependencies installed successfully" && break || \
+        (echo "Attempt $i failed, cleaning cache and retrying..." && \
+         npm cache clean --force && sleep 5); \
+    done
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -41,20 +64,32 @@ WORKDIR /app
 
 ENV NODE_ENV production
 
-# Configure Alpine repositories with multiple mirrors and retry logic
+# Enhanced Alpine repository configuration for runtime
 RUN set -e; \
+    echo "=== Configuring Alpine repositories for runtime ==="; \
     echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/main" > /etc/apk/repositories; \
     echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories; \
     echo "https://mirror.yandex.ru/mirrors/alpine/v3.18/main" >> /etc/apk/repositories; \
     echo "https://mirror.yandex.ru/mirrors/alpine/v3.18/community" >> /etc/apk/repositories; \
     echo "https://mirror1.alpinelinux.org/alpine/v3.18/main" >> /etc/apk/repositories; \
     echo "https://mirror1.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories; \
-    for i in 1 2 3; do \
-        apk update --no-cache && break || sleep 5; \
+    echo "https://mirrors.ustc.edu.cn/alpine/v3.18/main" >> /etc/apk/repositories; \
+    echo "https://mirrors.ustc.edu.cn/alpine/v3.18/community" >> /etc/apk/repositories; \
+    echo "=== Updating package index with retry logic ==="; \
+    for i in 1 2 3 4 5; do \
+        echo "Attempt $i/5: Updating package index..."; \
+        apk update --no-cache && echo "Package index updated successfully" && break || \
+        (echo "Attempt $i failed, waiting 10 seconds before retry..." && sleep 10); \
     done; \
-    apk add --no-cache curl && \
+    echo "=== Installing runtime packages ==="; \
+    apk add --no-cache curl ca-certificates tzdata || \
+    (echo "Primary package installation failed, trying alternative approach..." && \
+     apk update --no-cache && \
+     apk add --no-cache curl ca-certificates tzdata); \
+    echo "=== Creating system users ==="; \
     addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nodejs
+    adduser --system --uid 1001 nodejs; \
+    echo "=== Runtime setup completed ==="
 
 # Copy the built application
 COPY --from=builder /app/dist ./dist
