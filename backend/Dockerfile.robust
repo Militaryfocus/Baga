@@ -29,11 +29,11 @@ RUN set -e; \
 # Install all dependencies for build (includes devDeps)
 COPY package.json package-lock.json* ./
 
-# Configure npm for better reliability
+# Configure npm for better reliability with proper error handling
 RUN npm config set fetch-retries 5 && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
-    npm ci --prefer-offline --no-audit
+    npm ci --prefer-offline --no-audit || (echo "npm ci failed" && exit 1)
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -42,7 +42,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Generate Prisma Client and build the application
-RUN npx prisma generate && npm run build
+RUN npx prisma generate || (echo "Prisma generate failed" && exit 1) && \
+    npm run build || (echo "npm run build failed" && exit 1)
 
 # Production image, copy all the files and run the app
 FROM base AS runner
