@@ -1,0 +1,78 @@
+FROM node:18-alpine AS base
+
+# Install dependencies only when needed
+FROM base AS deps
+WORKDIR /app
+
+# Configure Alpine repositories with multiple mirrors and retry logic
+RUN set -e; \
+    echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/main" > /etc/apk/repositories; \
+    echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories; \
+    echo "https://mirror.yandex.ru/mirrors/alpine/v3.18/main" >> /etc/apk/repositories; \
+    echo "https://mirror.yandex.ru/mirrors/alpine/v3.18/community" >> /etc/apk/repositories; \
+    echo "https://mirror1.alpinelinux.org/alpine/v3.18/main" >> /etc/apk/repositories; \
+    echo "https://mirror1.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories; \
+    for i in 1 2 3; do \
+        apk update --no-cache && break || sleep 5; \
+    done; \
+    apk add --no-cache libc6-compat
+
+# Install all dependencies for build (includes devDeps)
+COPY package.json package-lock.json* ./
+
+# Configure npm for better reliability
+RUN npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm ci --prefer-offline --no-audit
+
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Generate Prisma Client and build the application
+RUN npx prisma generate && npm run build
+
+# Production image, copy all the files and run the app
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV production
+
+# Configure Alpine repositories with multiple mirrors and retry logic
+RUN set -e; \
+    echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/main" > /etc/apk/repositories; \
+    echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories; \
+    echo "https://mirror.yandex.ru/mirrors/alpine/v3.18/main" >> /etc/apk/repositories; \
+    echo "https://mirror.yandex.ru/mirrors/alpine/v3.18/community" >> /etc/apk/repositories; \
+    echo "https://mirror1.alpinelinux.org/alpine/v3.18/main" >> /etc/apk/repositories; \
+    echo "https://mirror1.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories; \
+    for i in 1 2 3; do \
+        apk update --no-cache && break || sleep 5; \
+    done; \
+    apk add --no-cache curl && \
+    addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nodejs
+
+# Copy the built application
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/prisma ./prisma
+
+# Create uploads directory
+RUN mkdir -p uploads && chown -R nodejs:nodejs uploads
+
+USER nodejs
+
+EXPOSE 3001
+
+ENV PORT 3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3001/api/health || exit 1
+
+CMD ["npm", "start"]

@@ -42,7 +42,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile.simple
+      dockerfile: Dockerfile.robust
     container_name: ml_community_backend
     environment:
       NODE_ENV: development
@@ -71,7 +71,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile.simple
+      dockerfile: Dockerfile.robust
     container_name: ml_community_frontend
     environment:
       VITE_API_URL: http://localhost:3001/api
