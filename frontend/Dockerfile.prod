@@ -2,12 +2,22 @@ FROM node:18-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
+
+# Configure Alpine repositories for better reliability
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/main" > /etc/apk/repositories && \
+    echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories && \
+    apk update && \
+    apk add --no-cache libc6-compat
 
 # Install dependencies based on the preferred package manager
 COPY package.json package-lock.json* ./
-RUN npm install --legacy-peer-deps
+
+# Configure npm for better reliability
+RUN npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm install --legacy-peer-deps --prefer-offline --no-audit
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -22,8 +32,11 @@ RUN npm run build
 FROM nginx:alpine AS runner
 WORKDIR /usr/share/nginx/html
 
-# Install curl for health checks
-RUN apk add --no-cache curl
+# Configure Alpine repositories and install curl for health checks
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/main" > /etc/apk/repositories && \
+    echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories && \
+    apk update && \
+    apk add --no-cache curl
 
 # Copy the built application
 COPY --from=builder /app/dist .

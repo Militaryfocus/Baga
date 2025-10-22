@@ -22,12 +22,28 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 echo -e "${GREEN}[1/8] Updating system packages...${NC}"
+# Check internet connectivity
+if ! ping -c 1 google.com &> /dev/null; then
+    echo -e "${RED}No internet connection detected. Please check your network.${NC}"
+    exit 1
+fi
+
 apt update && apt upgrade -y
 apt install -y curl wget git nano htop ca-certificates gnupg lsb-release
 
 echo -e "${GREEN}[2/8] Installing Docker...${NC}"
-# Remove old versions
-apt remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
+# Check if Docker is already installed
+if command -v docker &> /dev/null; then
+    echo -e "${YELLOW}Docker is already installed. Skipping installation...${NC}"
+    docker --version
+    docker compose version
+else
+    # Remove old versions
+    apt remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
+fi
+
+# Skip Docker installation if already installed
+if ! command -v docker &> /dev/null; then
 
 # Add Docker's official GPG key
 mkdir -p /etc/apt/keyrings
@@ -42,9 +58,10 @@ echo \
 apt update
 apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-# Verify installation
-docker --version
-docker compose version
+    # Verify installation
+    docker --version
+    docker compose version
+fi
 
 echo -e "${GREEN}[3/8] Setting up project directory...${NC}"
 INSTALL_DIR="/opt/mobile-legends-community"
@@ -123,7 +140,18 @@ else
 fi
 
 echo -e "${GREEN}[7/8] Starting Docker containers...${NC}"
-docker compose -f docker-compose.prod.yml up -d --build
+# Enable BuildKit for better build performance and caching
+export DOCKER_BUILDKIT=1
+export COMPOSE_DOCKER_CLI_BUILD=1
+
+# Build with progress output and retry on failure
+docker compose -f docker-compose.prod.yml build --progress=plain || {
+    echo -e "${YELLOW}Build failed, retrying with no cache...${NC}"
+    docker compose -f docker-compose.prod.yml build --no-cache --progress=plain
+}
+
+# Start the containers
+docker compose -f docker-compose.prod.yml up -d
 
 echo -e "${GREEN}[8/8] Initializing database...${NC}"
 echo "Waiting for services to be healthy..."

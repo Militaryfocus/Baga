@@ -2,12 +2,22 @@ FROM node:18-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
+
+# Configure Alpine repositories for better reliability
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/main" > /etc/apk/repositories && \
+    echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories && \
+    apk update && \
+    apk add --no-cache libc6-compat
 
 # Install all dependencies for build (includes devDeps)
 COPY package.json package-lock.json* ./
-RUN npm ci
+
+# Configure npm for better reliability
+RUN npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm ci --prefer-offline --no-audit
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -24,11 +34,13 @@ WORKDIR /app
 
 ENV NODE_ENV production
 
-# Runtime tools for healthcheck
-RUN apk add --no-cache curl
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nodejs
+# Configure Alpine repositories and install runtime tools
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/main" > /etc/apk/repositories && \
+    echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories && \
+    apk update && \
+    apk add --no-cache curl && \
+    addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nodejs
 
 # Copy the built application
 COPY --from=builder /app/dist ./dist
@@ -37,8 +49,7 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/prisma ./prisma
 
 # Create uploads directory
-RUN mkdir -p uploads
-RUN chown -R nodejs:nodejs uploads
+RUN mkdir -p uploads && chown -R nodejs:nodejs uploads
 
 USER nodejs
 
