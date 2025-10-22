@@ -1,8 +1,209 @@
 # Mobile Legends Fan Community
 
-Полноценное фан-сообщество для игры Mobile Legends с разделением на стабильную и продакшен версии. Все файлы полностью рабочие без заглушек, наполнены реальным кодом и готовы к немедленному запуску.
+Полноценное фан-сообщество для игры Mobile Legends. Все файлы полностью рабочие без заглушек, наполнены реальным кодом и готовы к немедленному запуску.
 
-## 🚀 Особенности
+## 🚀 Установка на VDS
+
+### Системные требования
+- Ubuntu 20.04/22.04/24.04
+- Минимум 2 ГБ RAM
+- 20 ГБ свободного места на диске
+- Открытые порты: 80, 443 (для SSL), 3000, 3001
+- Доменное имя (для SSL)
+
+### 1. Подготовка системы
+```bash
+# Обновление системы
+sudo apt update && sudo apt upgrade -y
+
+# Установка необходимых пакетов
+sudo apt install -y \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    software-properties-common \
+    git \
+    nginx \
+    ufw
+
+# Настройка фаервола
+sudo ufw allow ssh
+sudo ufw allow http
+sudo ufw allow https
+sudo ufw enable
+```
+
+### 2. Установка Docker и Docker Compose
+```bash
+# Установка Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+# Добавление пользователя в группу docker
+sudo usermod -aG docker $USER
+
+# Установка Docker Compose
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+```
+
+### 3. Клонирование и настройка проекта
+```bash
+# Создание рабочей директории
+sudo mkdir -p /opt/mobile-legends
+sudo chown -R $USER:$USER /opt/mobile-legends
+
+# Клонирование репозитория
+git clone https://github.com/Militaryfocus/Baga.git /opt/mobile-legends
+cd /opt/mobile-legends
+
+# Настройка переменных окружения
+cp .env.example .env
+```
+
+### 4. Настройка переменных окружения
+Отредактируйте файл `.env`:
+```env
+# Основные настройки
+NODE_ENV=production
+DOMAIN=your-domain.com
+
+# База данных
+POSTGRES_DB=mobile_legends_community
+POSTGRES_USER=ml_user
+POSTGRES_PASSWORD=your-secure-password
+
+# JWT
+JWT_SECRET=your-very-secure-jwt-secret
+JWT_EXPIRES_IN=7d
+
+# Redis
+REDIS_URL=redis://redis:6379
+
+# API и CORS
+API_URL=https://your-domain.com/api
+CORS_ORIGIN=https://your-domain.com
+```
+
+### 5. Настройка SSL (с Certbot)
+```bash
+# Установка Certbot
+sudo apt install -y certbot python3-certbot-nginx
+
+# Получение SSL сертификата
+sudo certbot --nginx -d your-domain.com
+
+# Автоматическое обновление сертификатов
+sudo systemctl enable certbot.timer
+sudo systemctl start certbot.timer
+```
+
+### 6. Запуск приложения
+```bash
+# Запуск всех сервисов
+cd /opt/mobile-legends
+docker-compose -f docker-compose.yml up -d --build
+
+# Проверка статуса
+docker-compose ps
+```
+
+### 7. Инициализация базы данных
+```bash
+# Применение миграций
+docker-compose exec backend npx prisma migrate deploy
+
+# Заполнение начальными данными
+docker-compose exec backend npx prisma db seed
+```
+
+### 8. Мониторинг и обслуживание
+
+#### Просмотр логов
+```bash
+# Все сервисы
+docker-compose logs -f
+
+# Конкретный сервис
+docker-compose logs -f backend
+docker-compose logs -f frontend
+```
+
+#### Перезапуск сервисов
+```bash
+# Перезапуск всех сервисов
+docker-compose restart
+
+# Перезапуск конкретного сервиса
+docker-compose restart backend
+docker-compose restart frontend
+```
+
+#### Обновление приложения
+```bash
+# Получение последних изменений
+cd /opt/mobile-legends
+git pull origin main
+
+# Пересборка и перезапуск контейнеров
+docker-compose -f docker-compose.yml up -d --build
+```
+
+### 9. Резервное копирование
+
+#### Бэкап базы данных
+```bash
+# Создание бэкапа
+docker-compose exec postgres pg_dump -U ml_user mobile_legends_community > backup.sql
+
+# Восстановление из бэкапа
+cat backup.sql | docker-compose exec -T postgres psql -U ml_user mobile_legends_community
+```
+
+#### Бэкап файлов загрузки
+```bash
+# Создание бэкапа uploads директории
+tar -czf uploads_backup.tar.gz uploads/
+```
+
+### 10. Проверка работоспособности
+
+После установки проверьте доступность:
+- Frontend: https://your-domain.com
+- API: https://your-domain.com/api
+- API Documentation: https://your-domain.com/api-docs
+
+### Тестовые пользователи
+
+После запуска seed данных доступны:
+- **Admin**: admin@mobilelegends.com / admin123
+- **User**: test@mobilelegends.com / admin123
+
+### Устранение неполадок
+
+1. Если сервисы не запускаются:
+```bash
+# Проверка логов
+docker-compose logs -f
+
+# Проверка статуса контейнеров
+docker ps -a
+```
+
+2. Если недоступна база данных:
+```bash
+# Проверка состояния PostgreSQL
+docker-compose exec postgres pg_isready
+```
+
+3. Если проблемы с сетью:
+```bash
+# Проверка сетей Docker
+docker network ls
+docker network inspect baga_ml_network
+```
+
+## 🛠 Технологический стек
 
 ### Полная реализация без заглушек:
 - ✅ **База данных** с миграциями и seed данными реальных героев Mobile Legends
