@@ -7,7 +7,9 @@ WORKDIR /app
 # Configure Alpine repositories for better reliability
 RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/main" > /etc/apk/repositories && \
     echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories && \
-    apk update && \
+    echo "https://mirror.yandex.ru/mirrors/alpine/v3.18/main" >> /etc/apk/repositories && \
+    echo "https://mirror.yandex.ru/mirrors/alpine/v3.18/community" >> /etc/apk/repositories && \
+    apk update --no-cache && \
     apk add --no-cache libc6-compat
 
 # Install dependencies based on the preferred package manager
@@ -35,7 +37,9 @@ WORKDIR /usr/share/nginx/html
 # Configure Alpine repositories and install curl for health checks
 RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/main" > /etc/apk/repositories && \
     echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories && \
-    apk update && \
+    echo "https://mirror.yandex.ru/mirrors/alpine/v3.18/main" >> /etc/apk/repositories && \
+    echo "https://mirror.yandex.ru/mirrors/alpine/v3.18/community" >> /etc/apk/repositories && \
+    apk update --no-cache && \
     apk add --no-cache curl
 
 # Copy the built application
