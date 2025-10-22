@@ -1,7 +1,5 @@
 FROM node:18-alpine
 
-# Install dependencies
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Copy package files
