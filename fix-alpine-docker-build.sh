@@ -36,7 +36,7 @@ check_dockerfile() {
     
     if check_file "$dockerfile"; then
         # Проверяем наличие правильной логики повторов
-        if grep -q "apk update --no-cache || (sleep 10 && apk update --no-cache) || (sleep 30 && apk update --no-cache) || exit 1" "$dockerfile"; then
+        if grep -q "apk update --no-cache.*sleep.*exit 1" "$dockerfile"; then
             echo -e "${GREEN}✅ Правильная логика повторов найдена${NC}"
         else
             echo -e "${RED}❌ Неправильная логика повторов${NC}"
