@@ -4,11 +4,13 @@ FROM node:18-alpine AS base
 FROM base AS deps
 WORKDIR /app
 
-# Configure Alpine repositories for better reliability
-RUN echo "https://dl-cdn.alpinelinux.org/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/main" > /etc/apk/repositories && \
-    echo "https://dl-cdn.alpinelinux.org/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/community" >> /etc/apk/repositories && \
+# Configure Alpine repositories (prefer mirrors first)
+RUN echo "https://mirror1.alpinelinux.org/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/main" > /etc/apk/repositories && \
+    echo "https://mirror1.alpinelinux.org/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/community" >> /etc/apk/repositories && \
     echo "https://mirror.yandex.ru/mirrors/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/main" >> /etc/apk/repositories && \
     echo "https://mirror.yandex.ru/mirrors/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/community" >> /etc/apk/repositories && \
+    echo "https://dl-cdn.alpinelinux.org/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/main" >> /etc/apk/repositories && \
+    echo "https://dl-cdn.alpinelinux.org/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/community" >> /etc/apk/repositories && \
     apk update --no-cache || (sleep 10 && apk update --no-cache) || (sleep 30 && apk update --no-cache) || exit 1 && \
     apk add --no-cache libc6-compat
 
@@ -36,14 +38,8 @@ WORKDIR /app
 
 ENV NODE_ENV production
 
-# Configure Alpine repositories and install runtime tools
-RUN echo "https://dl-cdn.alpinelinux.org/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/main" > /etc/apk/repositories && \
-    echo "https://dl-cdn.alpinelinux.org/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/community" >> /etc/apk/repositories && \
-    echo "https://mirror.yandex.ru/mirrors/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/main" >> /etc/apk/repositories && \
-    echo "https://mirror.yandex.ru/mirrors/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/community" >> /etc/apk/repositories && \
-    apk update --no-cache || (sleep 10 && apk update --no-cache) || (sleep 30 && apk update --no-cache) || exit 1 && \
-    apk add --no-cache curl && \
-    addgroup --system --gid 1001 nodejs && \
+# Create non-root user only (avoid apk in runtime layer)
+RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nodejs
 
 # Copy the built application
@@ -61,8 +57,8 @@ EXPOSE 3001
 
 ENV PORT 3001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3001/api/health || exit 1
+# Health check (busybox wget)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=5 \
+  CMD wget -q -T 3 -O /dev/null http://localhost:3001/api/health || exit 1
 
 CMD ["npm", "start"]
