@@ -7,7 +7,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v$(cat /etc/alpine-release | cut
     echo "https://dl-cdn.alpinelinux.org/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/community" >> /etc/apk/repositories && \
     echo "https://mirror.yandex.ru/mirrors/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/main" >> /etc/apk/repositories && \
     echo "https://mirror.yandex.ru/mirrors/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/community" >> /etc/apk/repositories && \
-    apk update --no-cache
+    apk update --no-cache || (sleep 10 && apk update --no-cache) || (sleep 30 && apk update --no-cache) || exit 1
 
 # Copy package files
 COPY package.json package-lock.json* ./
