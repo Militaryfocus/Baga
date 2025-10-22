@@ -226,10 +226,12 @@ docker network inspect baga_ml_network
 ### Backend:
 - **Node.js** + **Express.js** + **TypeScript**
 - **Prisma ORM** с PostgreSQL
-- **Redis** для кэширования
+- **Redis** для кэширования и WebSocket
 - **JWT** аутентификация
+- **Socket.IO** для чатов и уведомлений
 - **Swagger** документация API
 - **Docker** контейнеризация
+- **PM2** для управления процессами
 
 ### Frontend:
 - **React** + **TypeScript** + **Vite**
@@ -238,6 +240,9 @@ docker network inspect baga_ml_network
 - **React Router** для навигации
 - **React Hook Form** для форм
 - **Framer Motion** для анимаций
+- **Socket.IO Client** для WebSocket
+- **React Query** для кэширования данных
+- **Healthcheck** сервер для мониторинга
 
 ### Инфраструктура:
 - **Docker** + **Docker Compose**
@@ -521,8 +526,8 @@ docker-compose up --build
 
 ## 🎯 Roadmap
 
-- [ ] Система уведомлений в реальном времени
-- [ ] Чат между пользователями
+- [x] Система уведомлений в реальном времени
+- [x] Чат между пользователями
 - [ ] Турниры и соревнования
 - [ ] Мобильное приложение
 - [ ] Интеграция с Twitch/YouTube
