@@ -1,22 +1,18 @@
-FROM node:18-alpine
+FROM node:18-bullseye-slim
 
-# Install system dependencies (for sharp and general builds)
-RUN apk add --no-cache \
-  libc6-compat \
-  python3 \
-  make \
-  g++ \
-  vips-dev \
-  bash \
-  curl
+# Install system dependencies (for sharp and general builds) and ensure OpenSSL 1.1 compatibility
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    build-essential \
+    python3 \
+    curl \
+    bash \
+    libvips-dev \
+    ca-certificates \
+    openssl \
+  && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
-
-# Configure Alpine repositories for better reliability
-RUN echo "https://dl-cdn.alpinelinux.org/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/main" > /etc/apk/repositories && \
-    echo "https://dl-cdn.alpinelinux.org/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/community" >> /etc/apk/repositories && \
-    echo "https://mirror.yandex.ru/mirrors/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/main" >> /etc/apk/repositories && \
-    echo "https://mirror.yandex.ru/mirrors/alpine/v$(cat /etc/alpine-release | cut -d. -f1,2)/community" >> /etc/apk/repositories && \
-    apk update --no-cache || (sleep 10 && apk update --no-cache) || (sleep 30 && apk update --no-cache) || exit 1
 
 # Copy package files
 COPY package.json package-lock.json* ./
@@ -28,7 +24,7 @@ RUN npm config set fund false \
   && npm config set fetch-retry-factor 2 \
   && npm config set fetch-retry-mintimeout 20000 \
   && npm config set fetch-timeout 600000 \
-  && set -eux; for i in 1 2 3 4 5; do \
+  && set -eux; for i in 1 2 3; do \
     npm ci --no-audit --no-fund && break; \
     echo "npm ci failed (attempt $i), retrying..."; \
     sleep $((i*5)); \

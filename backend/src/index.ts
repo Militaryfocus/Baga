@@ -58,6 +58,12 @@ app.use(cors({
   origin: process.env['CORS_ORIGIN'] || 'http://localhost:3000',
   credentials: true,
 }));
+// If running behind a reverse proxy (nginx), enable trust proxy so rate-limit and IP detection work
+if (process.env['TRUST_PROXY'] === 'true' || process.env['NODE_ENV'] === 'production') {
+  // Prefer a conservative trust proxy setting to avoid express-rate-limit's permissive trust proxy error.
+  // 'loopback' trusts only localhost; in production you may want to set a specific IP or '127.0.0.1,::1'
+  app.set('trust proxy', process.env['TRUST_PROXY_VALUE'] || 'loopback');
+}
 app.use(compression());
 app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));

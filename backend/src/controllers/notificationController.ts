@@ -1,11 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../config/database';
-import { ApiResponse } from '../types';
 
 export class NotificationController {
   async getNotifications(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = (req as any).user?.id;
+      const userId = (req as any)?.user?.id as string | undefined;
       if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
       const notifications = await prisma.notification.findMany({
@@ -22,8 +21,8 @@ export class NotificationController {
 
   async markAsRead(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = (req as any).user?.id;
-      const id = req.params.id;
+      const userId = (req as any)?.user?.id as string | undefined;
+      const id = req.params.id as string;
       if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
       const notif = await prisma.notification.findUnique({ where: { id } });

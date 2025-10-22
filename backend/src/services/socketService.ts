@@ -112,26 +112,27 @@ export class SocketService {
 
       // Статус онлайн/оффлайн
       socket.on('presence:update', async (status: 'online' | 'away' | 'offline') => {
+        const mapped = status.toUpperCase(); // ONLINE | AWAY | OFFLINE
         await prisma.user.update({
           where: { id: user.id },
-          data: { presenceStatus: status }
+          data: { presenceStatus: mapped as any }
         });
         
         this.io.emit('presence:updated', {
           userId: user.id,
-          status
+          status: mapped
         });
       });
 
       socket.on('disconnect', async () => {
         await prisma.user.update({
           where: { id: user.id },
-          data: { presenceStatus: 'offline' }
+          data: { presenceStatus: 'OFFLINE' }
         });
         
         this.io.emit('presence:updated', {
           userId: user.id,
-          status: 'offline'
+          status: 'OFFLINE'
         });
       });
     });

@@ -17,7 +17,8 @@ export const authenticate = async (
     const token = authHeader.slice(7);
     const payload = verifyToken(token);
 
-    const user = await prisma.user.findUnique<{ select: UserProfile } | any>({
+    // Use a generic any select to avoid strict Prisma select typing issues
+    const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       select: {
         id: true,
@@ -26,8 +27,8 @@ export const authenticate = async (
         role: true,
         isActive: true,
         avatar: true,
-      },
-    });
+      } as any,
+    }) as any;
 
     if (!user || !user.isActive) {
       res.status(401).json({ success: false, error: 'User not found or inactive' });

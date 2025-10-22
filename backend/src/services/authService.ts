@@ -211,7 +211,7 @@ export class AuthService {
     return { message: 'Password updated successfully' };
   }
 
-  async logout(userId: string, token: string) {
+  async logout(_userId: string, _token: string) {
     // In a more sophisticated implementation, you might want to blacklist the token
     // For now, we'll just return success
     return { message: 'Logged out successfully' };

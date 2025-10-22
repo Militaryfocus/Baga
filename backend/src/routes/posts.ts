@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { PostController } from '../controllers/postController';
 import { validateRequest, validateQuery } from '../middleware/validation';
 import { authenticate, optionalAuth } from '../middleware/auth';
-import { createPostRateLimit, commentRateLimit } from '../middleware/rateLimit';
+import { createPostRateLimit } from '../middleware/rateLimit';
 import { createPostSchema, paginationSchema } from '../utils/validation';
 
 const router = Router();

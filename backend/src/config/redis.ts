@@ -1,10 +1,6 @@
 import { createClient, RedisClientType } from 'redis';
 
-<<<<<<< HEAD
 let redisClient: RedisClientType | null = null;
-=======
-let redisClient: RedisClientType | undefined;
->>>>>>> 96ce9b5 (Checkpoint before follow-up message)
 
 export const connectRedis = async (): Promise<RedisClientType> => {
   if (redisClient) {
