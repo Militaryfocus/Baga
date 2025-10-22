@@ -6,14 +6,23 @@ WORKDIR /app
 
 # Configure Alpine repositories with multiple mirrors and retry logic
 RUN set -e; \
-    echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/main" > /etc/apk/repositories; \
-    echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories; \
-    echo "https://mirror.yandex.ru/mirrors/alpine/v3.18/main" >> /etc/apk/repositories; \
-    echo "https://mirror.yandex.ru/mirrors/alpine/v3.18/community" >> /etc/apk/repositories; \
-    echo "https://mirror1.alpinelinux.org/alpine/v3.18/main" >> /etc/apk/repositories; \
-    echo "https://mirror1.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories; \
+    ALPINE_VERSION=$(cat /etc/alpine-release | cut -d. -f1-2); \
+    echo "https://dl-cdn.alpinelinux.org/alpine/v${ALPINE_VERSION}/main" > /etc/apk/repositories; \
+    echo "https://dl-cdn.alpinelinux.org/alpine/v${ALPINE_VERSION}/community" >> /etc/apk/repositories; \
+    echo "https://mirror.yandex.ru/mirrors/alpine/v${ALPINE_VERSION}/main" >> /etc/apk/repositories; \
+    echo "https://mirror.yandex.ru/mirrors/alpine/v${ALPINE_VERSION}/community" >> /etc/apk/repositories; \
+    echo "https://mirror1.alpinelinux.org/alpine/v${ALPINE_VERSION}/main" >> /etc/apk/repositories; \
+    echo "https://mirror1.alpinelinux.org/alpine/v${ALPINE_VERSION}/community" >> /etc/apk/repositories; \
     for i in 1 2 3; do \
-        apk update --no-cache && break || sleep 5; \
+        if apk update --no-cache; then \
+            break; \
+        else \
+            if [ $i -eq 3 ]; then \
+                echo "Failed to update package index after 3 attempts"; \
+                exit 1; \
+            fi; \
+            sleep 5; \
+        fi; \
     done; \
     apk add --no-cache libc6-compat
 
@@ -48,7 +57,7 @@ RUN set -e; \
     echo "https://mirror1.alpinelinux.org/alpine/v3.18/main" >> /etc/apk/repositories; \
     echo "https://mirror1.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories; \
     for i in 1 2 3; do \
-        apk update --no-cache && break || sleep 5; \
+        apk update --no-cache && break || (sleep 5 && [ $i -eq 3 ] && exit 1); \
     done; \
     apk add --no-cache curl
 
