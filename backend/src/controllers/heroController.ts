@@ -74,7 +74,7 @@ export class HeroController {
     }
   }
 
-  async getHeroRoles(req: Request, res: Response, next: NextFunction) {
+  async getHeroRoles(_req: Request, res: Response, next: NextFunction) {
     try {
       const roles = await heroService.getHeroRoles();
       
@@ -89,7 +89,7 @@ export class HeroController {
     }
   }
 
-  async getHeroDifficulties(req: Request, res: Response, next: NextFunction) {
+  async getHeroDifficulties(_req: Request, res: Response, next: NextFunction) {
     try {
       const difficulties = await heroService.getHeroDifficulties();
       

@@ -39,7 +39,15 @@ export class PostController {
         sortOrder: (((req.query as any)['sortOrder'] as 'asc' | 'desc') || 'desc') as 'asc' | 'desc',
       } as const;
 
-      const result = await postService.getPosts(filters, pagination);
+      const normalizedFilters = {
+        category: filters.category ?? undefined,
+        heroId: filters.heroId ?? undefined,
+        authorId: filters.authorId ?? undefined,
+        search: filters.search ?? undefined,
+        tags: filters.tags ?? [],
+      };
+
+      const result = await postService.getPosts(normalizedFilters, pagination);
       
       const response: ApiResponse = {
         success: true,

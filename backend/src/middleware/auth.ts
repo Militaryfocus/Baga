@@ -48,7 +48,7 @@ export const authenticate = async (req: AuthenticatedRequest, res: Response, nex
 };
 
 export const authorize = (...roles: string[]) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -67,7 +67,7 @@ export const authorize = (...roles: string[]) => {
   };
 };
 
-export const optionalAuth = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const optionalAuth = async (req: AuthenticatedRequest, _res: Response, next: NextFunction): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
     
