@@ -361,13 +361,20 @@ mobile-legends-fan-community/
 
 ## 🔧 API Endpoints
 
+> 📝 **Подробная документация по аутентификации**: См. [AUTH.md](docs/AUTH.md)
+
 ### Аутентификация
 - `POST /api/auth/register` - Регистрация
-- `POST /api/auth/login` - Вход
+- `POST /api/auth/login` - Вход и получение токенов
+- `POST /api/auth/refresh` - Обновление access token
 - `GET /api/auth/profile` - Профиль пользователя
 - `PUT /api/auth/profile` - Обновление профиля
 - `PUT /api/auth/change-password` - Смена пароля
-- `POST /api/auth/logout` - Выход
+- `POST /api/auth/logout` - Выход и удаление сессии
+- `POST /api/auth/2fa/enable` - Включение 2FA
+- `POST /api/auth/2fa/verify` - Проверка 2FA кода
+- `GET /api/auth/sessions` - Список активных сессий
+- `DELETE /api/auth/sessions/:id` - Удаление сессии
 
 ### Посты
 - `GET /api/posts` - Список постов
@@ -452,12 +459,28 @@ cd backend && npx prisma studio
 
 ## 🔒 Безопасность
 
-- **JWT токены** для аутентификации
-- **bcrypt** для хеширования паролей
-- **Rate limiting** для защиты от атак
-- **CORS** настройки
-- **Helmet** для заголовков безопасности
-- **Валидация** данных на всех уровнях
+- **JWT токены**
+  - Access и Refresh токены
+  - Secure, HTTP-Only cookies для Refresh токенов
+  - Автоматическое обновление токенов
+- **Хеширование**
+  - Argon2 для хеширования паролей
+  - Уникальная соль для каждого пароля
+- **Сессии**
+  - Управление активными сессиями
+  - Отзыв подозрительных сессий
+  - История входов
+- **2FA**
+  - TOTP (Time-based One-Time Password)
+  - QR коды для Google Authenticator
+  - Резервные коды восстановления
+- **Защита от атак**
+  - Rate limiting для всех эндпоинтов
+  - CORS настройки
+  - Helmet для заголовков безопасности
+  - Валидация данных на всех уровнях
+  - Защита от CSRF атак
+  - Защита от XSS атак
 
 ## 📱 Адаптивность
 
