@@ -1,24 +1,23 @@
 import { Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt';
-import { AuthenticatedRequest } from '../types';
+import { AuthenticatedRequest, UserProfile } from '../types';
 import prisma from '../config/database';
 
-export const authenticate = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const authenticate = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        error: 'Access token required'
-      });
+    if (!(authHeader && authHeader.startsWith('Bearer '))) {
+      res.status(401).json({ success: false, error: 'Access token required' });
+      return;
     }
-
-    const token = authHeader.substring(7);
+    const token = authHeader.slice(7);
     const payload = verifyToken(token);
 
-    // Check if user still exists and is active
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.findUnique<{ select: UserProfile } | any>({
       where: { id: payload.userId },
       select: {
         id: true,
@@ -26,43 +25,34 @@ export const authenticate = async (req: AuthenticatedRequest, res: Response, nex
         username: true,
         role: true,
         isActive: true,
-        avatar: true
-      }
+        avatar: true,
+      },
     });
 
     if (!user || !user.isActive) {
-      return res.status(401).json({
-        success: false,
-        error: 'User not found or inactive'
-      });
+      res.status(401).json({ success: false, error: 'User not found or inactive' });
+      return;
     }
 
-    req.user = user;
+    req.user = user as UserProfile;
     next();
   } catch (error) {
-    return res.status(401).json({
-      success: false,
-      error: 'Invalid or expired token'
-    });
+    res.status(401).json({ success: false, error: 'Invalid or expired token' });
+    return;
   }
 };
 
 export const authorize = (...roles: string[]) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication required'
-      });
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ success: false, error: 'Authentication required' });
+      return;
     }
-
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        error: 'Insufficient permissions'
-      });
+    if (!roles.includes(user.role)) {
+      res.status(403).json({ success: false, error: 'Insufficient permissions' });
+      return;
     }
-
     next();
   };
 };
