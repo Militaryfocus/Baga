@@ -1,6 +1,6 @@
 import { createClient, RedisClientType } from 'redis';
 
-let redisClient: RedisClientType;
+let redisClient: RedisClientType | null = null;
 
 export const connectRedis = async (): Promise<RedisClientType> => {
   if (redisClient) {

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useHeroes } from '../hooks/useHeroes';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { Star, Heart, MessageCircle, FileText, Users } from 'lucide-react';
+import { Star, Heart, MessageCircle, Users } from 'lucide-react';
 import { cn } from '../utils/cn';
 
 const HeroDetailPage = () => {

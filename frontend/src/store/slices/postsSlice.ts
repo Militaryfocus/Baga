@@ -128,7 +128,7 @@ export const likePost = createAsyncThunk(
 
 export const fetchTrendingPosts = createAsyncThunk(
   'posts/fetchTrendingPosts',
-  async (limit?: number, { rejectWithValue }) => {
+  async (limit: number | undefined, { rejectWithValue }) => {
     try {
       const response = await apiService.getTrendingPosts(limit);
       if (response.success && response.data) {

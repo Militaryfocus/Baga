@@ -1,8 +1,17 @@
 import { Request } from 'express';
-import { User, UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client';
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  username: string;
+  role: UserRole;
+  isActive: boolean;
+  avatar: string | null;
+}
 
 export interface AuthenticatedRequest extends Request {
-  user?: User;
+  user?: UserProfile;
 }
 
 export interface JWTPayload {

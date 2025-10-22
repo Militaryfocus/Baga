@@ -207,6 +207,7 @@ export interface PaginationQuery {
 export interface PostFilters {
   category?: string;
   heroId?: string;
+  heroRole?: string;
   authorId?: string;
   search?: string;
   tags?: string[];

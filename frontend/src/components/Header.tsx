@@ -4,7 +4,6 @@ import { Search, Menu, User, LogOut, Settings, Plus } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useUI } from '../hooks/useUI';
 import { usePosts } from '../hooks/usePosts';
-import { useHeroes } from '../hooks/useHeroes';
 
 const Header = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -12,7 +11,6 @@ const Header = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const { toggleSidebar, openModal } = useUI();
   const { setFilters: setPostFilters } = usePosts();
-  const { setFilters: setHeroFilters } = useHeroes();
   const navigate = useNavigate();
 
   const handleSearch = (e: React.FormEvent) => {
