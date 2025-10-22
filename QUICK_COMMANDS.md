@@ -294,6 +294,21 @@ docker-compose build --no-cache --pull
 
 ## 🆘 Решение проблем
 
+### Проблемы при сборке (зависание на Alpine packages)
+```bash
+# Быстрое исправление
+sudo ./fix-build.sh
+
+# Или вручную:
+docker builder prune -f
+docker system prune -f
+export DOCKER_BUILDKIT=1
+docker-compose -f docker-compose.prod.yml build --no-cache
+
+# Подробная информация
+cat BUILD_TROUBLESHOOTING.md
+```
+
 ### Контейнеры не запускаются
 ```bash
 # Просмотреть логи
