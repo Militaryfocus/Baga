@@ -17,7 +17,7 @@ interface CreatePostForm {
 const CreatePostPage = () => {
   const [newTag, setNewTag] = useState('');
   const { createPost, isLoading } = usePosts();
-  const { heroes, fetchHeroes } = useHeroes();
+  const { heroes } = useHeroes();
   const navigate = useNavigate();
 
   const {

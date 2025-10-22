@@ -29,7 +29,7 @@ export const usePosts = () => {
 
   const handleFetchPosts = useCallback(
     (params?: { filters?: any; pagination?: any }) => {
-      return dispatch(fetchPosts(params));
+      return dispatch(fetchPosts(params || {}));
     },
     [dispatch]
   );

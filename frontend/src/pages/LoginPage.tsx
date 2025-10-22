@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../hooks/useAuth';
-import { useUI } from '../hooks/useUI';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 
@@ -14,7 +13,6 @@ interface LoginForm {
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { login, isLoading, error, clearError } = useAuth();
-  const { openModal } = useUI();
   const navigate = useNavigate();
   const location = useLocation();
 

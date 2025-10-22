@@ -132,7 +132,7 @@ export const fetchHeroDifficulties = createAsyncThunk(
 
 export const fetchPopularHeroes = createAsyncThunk(
   'heroes/fetchPopularHeroes',
-  async (limit?: number, { rejectWithValue }) => {
+  async (limit: number | undefined, { rejectWithValue }) => {
     try {
       const response = await apiService.getPopularHeroes(limit);
       if (response.success && response.data) {

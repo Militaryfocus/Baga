@@ -102,7 +102,7 @@ export const changePassword = createAsyncThunk(
 
 export const logout = createAsyncThunk(
   'auth/logout',
-  async (_, { rejectWithValue }) => {
+  async () => {
     try {
       await apiService.logout();
       localStorage.removeItem('token');

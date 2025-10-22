@@ -31,7 +31,7 @@ export const useHeroes = () => {
 
   const handleFetchHeroes = useCallback(
     (params?: { filters?: any; pagination?: any }) => {
-      return dispatch(fetchHeroes(params));
+      return dispatch(fetchHeroes(params || {}));
     },
     [dispatch]
   );

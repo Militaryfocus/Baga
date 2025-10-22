@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, FileText, Users, TrendingUp, Star, Settings } from 'lucide-react';
+import { Home, FileText, Users, TrendingUp } from 'lucide-react';
 import { useUI } from '../hooks/useUI';
 import { useHeroes } from '../hooks/useHeroes';
 import { useEffect } from 'react';
