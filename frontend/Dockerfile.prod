@@ -1,6 +1,11 @@
 FROM node:18-bullseye-slim AS deps
 WORKDIR /app
 
+RUN set -eux; \
+  printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\nAcquire::ForceIPv4 "true";\n' > /etc/apt/apt.conf.d/80retries; \
+  sed -i 's|deb.debian.org|mirror.yandex.ru|g; s|security.debian.org|mirror.yandex.ru|g' /etc/apt/sources.list || true; \
+  apt-get update || true
+
 COPY package.json package-lock.json* ./
 RUN npm ci --prefer-offline --no-audit
 
