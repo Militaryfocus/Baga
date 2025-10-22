@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
-import rateLimit from 'express-rate-limit';
+// rateLimit is not used directly here; specific limiters live in middleware
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import dotenv from 'dotenv';
@@ -18,7 +18,7 @@ import prisma from './config/database';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = parseInt(process.env['PORT'] || '3001');
 
 // Swagger configuration
 const swaggerOptions = {
@@ -53,8 +53,8 @@ const specs = swaggerJsdoc(swaggerOptions);
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-  credentials: true
+  origin: process.env['CORS_ORIGIN'] || 'http://localhost:3000',
+  credentials: true,
 }));
 app.use(compression());
 app.use(morgan('combined'));

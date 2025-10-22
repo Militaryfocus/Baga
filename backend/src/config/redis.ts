@@ -1,6 +1,10 @@
 import { createClient, RedisClientType } from 'redis';
 
+<<<<<<< HEAD
 let redisClient: RedisClientType | null = null;
+=======
+let redisClient: RedisClientType | undefined;
+>>>>>>> 96ce9b5 (Checkpoint before follow-up message)
 
 export const connectRedis = async (): Promise<RedisClientType> => {
   if (redisClient) {
@@ -8,7 +12,7 @@ export const connectRedis = async (): Promise<RedisClientType> => {
   }
 
   redisClient = createClient({
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    url: process.env['REDIS_URL'] || 'redis://localhost:6379',
   });
 
   redisClient.on('error', (err) => {

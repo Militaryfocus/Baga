@@ -25,19 +25,19 @@ export class PostController {
   async getPosts(req: Request, res: Response, next: NextFunction) {
     try {
       const filters = {
-        category: req.query.category as string,
-        heroId: req.query.heroId as string,
-        authorId: req.query.authorId as string,
-        search: req.query.search as string,
-        tags: req.query.tags ? (req.query.tags as string).split(',') : []
-      };
+        category: (req.query as any)['category'] as string | undefined,
+        heroId: (req.query as any)['heroId'] as string | undefined,
+        authorId: (req.query as any)['authorId'] as string | undefined,
+        search: (req.query as any)['search'] as string | undefined,
+        tags: (req.query as any)['tags'] ? ((req.query as any)['tags'] as string).split(',') : []
+      } as const;
 
       const pagination = {
-        page: parseInt(req.query.page as string) || 1,
-        limit: parseInt(req.query.limit as string) || 10,
-        sortBy: req.query.sortBy as string || 'createdAt',
-        sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'desc'
-      };
+        page: parseInt((req.query as any)['page'] as string) || 1,
+        limit: parseInt((req.query as any)['limit'] as string) || 10,
+        sortBy: ((req.query as any)['sortBy'] as string) || 'createdAt',
+        sortOrder: (((req.query as any)['sortOrder'] as 'asc' | 'desc') || 'desc') as 'asc' | 'desc',
+      } as const;
 
       const result = await postService.getPosts(filters, pagination);
       

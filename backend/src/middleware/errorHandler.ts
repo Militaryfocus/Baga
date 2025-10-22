@@ -15,9 +15,9 @@ export const createError = (message: string, statusCode: number = 500): AppError
 
 export const errorHandler = (
   error: AppError,
-  req: Request,
+  _req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
   let statusCode = error.statusCode || 500;
   let message = error.message || 'Internal Server Error';
@@ -61,18 +61,18 @@ export const errorHandler = (
   }
 
   // Log error in development
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env['NODE_ENV'] === 'development') {
     console.error('Error:', error);
   }
 
   res.status(statusCode).json({
     success: false,
     error: message,
-    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    ...(process.env['NODE_ENV'] === 'development' && { stack: error.stack })
   });
 };
 
-export const notFound = (req: Request, res: Response, next: NextFunction) => {
+export const notFound = (req: Request, _res: Response, next: NextFunction) => {
   const error = createError(`Route ${req.originalUrl} not found`, 404);
   next(error);
 };

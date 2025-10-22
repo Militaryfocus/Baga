@@ -8,18 +8,18 @@ export class HeroController {
   async getHeroes(req: Request, res: Response, next: NextFunction) {
     try {
       const filters = {
-        role: req.query.role as string,
-        difficulty: req.query.difficulty ? parseInt(req.query.difficulty as string) : undefined,
-        search: req.query.search as string,
-        tags: req.query.tags ? (req.query.tags as string).split(',') : []
-      };
+        role: (req.query as any)['role'] as string | undefined,
+        difficulty: (req.query as any)['difficulty'] ? parseInt((req.query as any)['difficulty'] as string) : undefined,
+        search: (req.query as any)['search'] as string | undefined,
+        tags: (req.query as any)['tags'] ? ((req.query as any)['tags'] as string).split(',') : []
+      } as const;
 
       const pagination = {
-        page: parseInt(req.query.page as string) || 1,
-        limit: parseInt(req.query.limit as string) || 20,
-        sortBy: req.query.sortBy as string || 'name',
-        sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'asc'
-      };
+        page: parseInt((req.query as any)['page'] as string) || 1,
+        limit: parseInt((req.query as any)['limit'] as string) || 20,
+        sortBy: ((req.query as any)['sortBy'] as string) || 'name',
+        sortOrder: (((req.query as any)['sortOrder'] as 'asc' | 'desc') || 'asc') as 'asc' | 'desc',
+      } as const;
 
       const result = await heroService.getHeroes(filters, pagination);
       
