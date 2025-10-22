@@ -2,6 +2,8 @@ import { Router } from 'express';
 import authRoutes from './auth';
 import postRoutes from './posts';
 import heroRoutes from './heroes';
+import chatRoutes from './chats';
+import notificationRoutes from './notifications';
 
 const router = Router();
 
@@ -19,5 +21,7 @@ router.get('/health', (_req, res) => {
 router.use('/auth', authRoutes);
 router.use('/posts', postRoutes);
 router.use('/heroes', heroRoutes);
+router.use('/chats', chatRoutes);
+router.use('/notifications', notificationRoutes);
 
 export default router;

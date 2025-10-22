@@ -13,6 +13,8 @@ import { errorHandler, notFound } from './middleware/errorHandler';
 import { generalRateLimit } from './middleware/rateLimit';
 import { connectRedis } from './config/redis';
 import prisma from './config/database';
+import { SocketService } from './services/socketService';
+import http from 'http';
 
 // Load environment variables
 dotenv.config();
@@ -97,7 +99,12 @@ const startServer = async () => {
     await prisma.$connect();
     console.log('Database connected successfully');
 
-    app.listen(PORT, () => {
+    const server = http.createServer(app);
+
+    // Initialize SocketService
+    const socketService = new SocketService(server);
+
+    server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`API Documentation: http://localhost:${PORT}/api-docs`);
     });

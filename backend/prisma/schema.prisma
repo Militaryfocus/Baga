@@ -16,6 +16,12 @@ enum UserRole {
   ADMIN
 }
 
+enum UserPresenceStatus {
+  ONLINE
+  AWAY
+  OFFLINE
+}
+
 enum PostCategory {
   GUIDES
   NEWS
@@ -42,24 +48,32 @@ enum BuildType {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  username  String   @unique
-  password  String
-  avatar    String?
-  role      UserRole @default(USER)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String            @id @default(cuid())
+  email          String            @unique
+  username       String            @unique
+  password       String
+  avatar         String?
+  role           UserRole          @default(USER)
+  isActive       Boolean           @default(true)
+  presenceStatus UserPresenceStatus @default(OFFLINE)
+  lastSeen       DateTime          @default(now())
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
   // Relations
-  posts       Post[]
-  comments    Comment[]
-  likes       Like[]
-  reports     Report[]
-  heroBuilds  HeroBuild[]
+  posts         Post[]
+  comments      Comment[]
+  likes         Like[]
+  reports       Report[]
+  heroBuilds    HeroBuild[]
   notifications Notification[]
-  sessions    UserSession[]
+  sessions      UserSession[]
+  chatRooms     ChatRoomMember[]
+  messages      ChatMessage[]
+  sentFriendRequests    FriendRequest[] @relation("SentFriendRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
+  friends       Friend[]
+  friendsOf     Friend[]      @relation("UserFriends")
 
   @@map("users")
 }
@@ -74,6 +88,34 @@ model UserSession {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_sessions")
+}
+
+model Friend {
+  id        String   @id @default(cuid())
+  userId    String
+  friendId  String
+  createdAt DateTime @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  friend  User     @relation("UserFriends", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
+  @@map("friends")
+}
+
+model FriendRequest {
+  id        String   @id @default(cuid())
+  senderId  String
+  receiverId String
+  status    String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sender   User     @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User     @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@map("friend_requests")
 }
 
 model Post {
@@ -166,8 +208,60 @@ model Hero {
   builds    HeroBuild[]
   abilities HeroAbility[]
   tags      HeroTag[]
+  chatRooms  ChatRoom[]    // Чат-комнаты для обсуждения героя
 
   @@map("heroes")
+}
+
+model ChatRoom {
+  id          String   @id @default(cuid())
+  name        String?
+  type        String   @default("DIRECT") // DIRECT, GROUP, HERO
+  heroId      String?  // Для чат-комнат героев
+  isPrivate   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  members   ChatRoomMember[]
+  messages  ChatMessage[]
+  hero      Hero?           @relation(fields: [heroId], references: [id])
+
+  @@map("chat_rooms")
+}
+
+model ChatRoomMember {
+  id         String   @id @default(cuid())
+  userId     String
+  chatRoomId String
+  role       String   @default("MEMBER") // OWNER, ADMIN, MEMBER
+  joinedAt   DateTime @default(now())
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chatRoomId])
+  @@map("chat_room_members")
+}
+
+model ChatMessage {
+  id         String   @id @default(cuid())
+  content    String
+  senderId   String
+  chatRoomId String
+  replyToId  String?
+  isEdited   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  sender   User       @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  chatRoom ChatRoom   @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  replyTo  ChatMessage? @relation("Replies", fields: [replyToId], references: [id])
+  replies  ChatMessage[] @relation("Replies")
+
+  @@map("chat_messages")
 }
 
 model HeroAbility {
@@ -270,7 +364,7 @@ model Notification {
   userId    String
   title     String
   message   String
-  type      String   // LIKE, COMMENT, MENTION, SYSTEM
+  type      String   // LIKE, COMMENT, MENTION, CHAT, FRIEND_REQUEST, SYSTEM
   isRead    Boolean  @default(false)
   data      Json?    // Additional data
   createdAt DateTime @default(now())

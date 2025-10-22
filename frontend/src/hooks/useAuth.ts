@@ -10,6 +10,8 @@ import {
   clearError 
 } from '../store/slices/authSlice';
 import { useCallback } from 'react';
+import { socketClient } from '../services/socket';
+import { addNotification } from '../store/slices/uiSlice';
 
 export const useAuth = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -24,6 +26,18 @@ export const useAuth = () => {
     [dispatch]
   );
 
+  // Subscribe to socket after successful login
+  // Note: This relies on auth slice to persist token to localStorage
+  if (typeof window !== 'undefined') {
+    const tok = localStorage.getItem('token');
+    if (tok) {
+      const socket = socketClient.connect(tok);
+      socket.on('notification:new', (n) => {
+        dispatch(addNotification(n));
+      });
+    }
+  }
+
   const handleRegister = useCallback(
     (userData: { email: string; username: string; password: string }) => {
       return dispatch(register(userData));
@@ -32,6 +46,7 @@ export const useAuth = () => {
   );
 
   const handleLogout = useCallback(() => {
+    socketClient.disconnect();
     return dispatch(logout());
   }, [dispatch]);
 
