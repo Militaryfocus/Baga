@@ -21,7 +21,14 @@ export class HeroController {
         sortOrder: (((req.query as any)['sortOrder'] as 'asc' | 'desc') || 'asc') as 'asc' | 'desc',
       } as const;
 
-      const result = await heroService.getHeroes(filters, pagination);
+      const normalizedFilters = {
+        role: filters.role ?? undefined,
+        difficulty: filters.difficulty ?? undefined,
+        search: filters.search ?? undefined,
+        tags: filters.tags ?? [],
+      };
+
+      const result = await heroService.getHeroes(normalizedFilters, pagination);
       
       const response: ApiResponse = {
         success: true,
