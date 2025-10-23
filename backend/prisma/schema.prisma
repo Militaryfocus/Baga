@@ -1,0 +1,406 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum TwoFactorMethod {
+  EMAIL
+  AUTHENTICATOR
+  SMS
+}
+
+enum UserPresenceStatus {
+  ONLINE
+  AWAY
+  OFFLINE
+}
+
+enum PostCategory {
+  GUIDES
+  NEWS
+  FANART
+  GAMEPLAY
+  DISCUSSION
+  MEMES
+}
+
+enum HeroRole {
+  TANK
+  FIGHTER
+  ASSASSIN
+  MAGE
+  MARKSMAN
+  SUPPORT
+}
+
+enum BuildType {
+  DAMAGE
+  TANK
+  SUPPORT
+  HYBRID
+}
+
+model User {
+  id             String            @id @default(cuid())
+  email          String            @unique
+  username       String            @unique
+  password       String
+  avatar         String?
+  role           UserRole          @default(USER)
+  isActive       Boolean           @default(true)
+  isEmailVerified Boolean          @default(false)
+  twoFactorEnabled Boolean         @default(false)
+  twoFactorMethod TwoFactorMethod?
+  twoFactorSecret String?
+  passwordResetToken String?       @unique
+  passwordResetExpires DateTime?
+  presenceStatus UserPresenceStatus @default(OFFLINE)
+  lastSeen       DateTime          @default(now())
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  // Relations
+  posts         Post[]
+  comments      Comment[]
+  likes         Like[]
+  reports       Report[]
+  heroBuilds    HeroBuild[]
+  notifications Notification[]
+  sessions      UserSession[]
+  chatRooms     ChatRoomMember[]
+  messages      ChatMessage[]
+  sentFriendRequests    FriendRequest[] @relation("SentFriendRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
+  friends       Friend[]
+  friendsOf     Friend[]      @relation("UserFriends")
+
+  @@map("users")
+}
+
+model UserSession {
+  id              String   @id @default(cuid())
+  userId          String
+  accessToken     String   @unique
+  refreshToken    String   @unique
+  expiresAt       DateTime
+  refreshExpiresAt DateTime
+  userAgent       String?
+  ipAddress       String?
+  lastUsedAt      DateTime @default(now())
+  isValid         Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+}
+
+model Friend {
+  id        String   @id @default(cuid())
+  userId    String
+  friendId  String
+  createdAt DateTime @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  friend  User     @relation("UserFriends", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
+  @@map("friends")
+}
+
+model FriendRequest {
+  id        String   @id @default(cuid())
+  senderId  String
+  receiverId String
+  status    String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sender   User     @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User     @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@map("friend_requests")
+}
+
+model Post {
+  id          String       @id @default(cuid())
+  title       String
+  content     String
+  category    PostCategory
+  authorId    String
+  heroId      String?
+  isPublished Boolean      @default(true)
+  isPinned    Boolean      @default(false)
+  viewCount   Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  hero      Hero?      @relation(fields: [heroId], references: [id])
+  comments  Comment[]
+  likes     Like[]
+  reports   Report[]
+  tags      PostTag[]
+
+  @@map("posts")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  postId    String
+  authorId  String
+  parentId  String?
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  post     Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies  Comment[] @relation("CommentReplies")
+  likes    Like[]
+  reports  Report[]
+
+  @@map("comments")
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String?
+  commentId String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post    Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@unique([userId, commentId])
+  @@map("likes")
+}
+
+model Hero {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String
+  role        HeroRole
+  difficulty  Int      // 1-5
+  avatar      String?
+  banner      String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Hero stats
+  health      Int
+  mana        Int
+  physicalAttack Int
+  physicalDefense Int
+  magicPower  Int
+  magicResistance Int
+  speed       Int
+  attackSpeed Float
+
+  // Relations
+  posts     Post[]
+  builds    HeroBuild[]
+  abilities HeroAbility[]
+  tags      HeroTag[]
+  chatRooms  ChatRoom[]    // Чат-комнаты для обсуждения героя
+
+  @@map("heroes")
+}
+
+model ChatRoom {
+  id          String   @id @default(cuid())
+  name        String?
+  type        String   @default("DIRECT") // DIRECT, GROUP, HERO
+  heroId      String?  // Для чат-комнат героев
+  isPrivate   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  members   ChatRoomMember[]
+  messages  ChatMessage[]
+  hero      Hero?           @relation(fields: [heroId], references: [id])
+
+  @@map("chat_rooms")
+}
+
+model ChatRoomMember {
+  id         String   @id @default(cuid())
+  userId     String
+  chatRoomId String
+  role       String   @default("MEMBER") // OWNER, ADMIN, MEMBER
+  joinedAt   DateTime @default(now())
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chatRoomId])
+  @@map("chat_room_members")
+}
+
+model ChatMessage {
+  id         String   @id @default(cuid())
+  content    String
+  senderId   String
+  chatRoomId String
+  replyToId  String?
+  isEdited   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  sender   User       @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  chatRoom ChatRoom   @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  replyTo  ChatMessage? @relation("Replies", fields: [replyToId], references: [id])
+  replies  ChatMessage[] @relation("Replies")
+
+  @@map("chat_messages")
+}
+
+model HeroAbility {
+  id          String @id @default(cuid())
+  heroId      String
+  name        String
+  description String
+  cooldown    Int?   // in seconds
+  manaCost    Int?
+  damage      String?
+  type        String // Passive, Active, Ultimate
+  level       Int    // 1-3 for abilities, 1-6 for ultimate
+  icon        String?
+
+  hero Hero @relation(fields: [heroId], references: [id], onDelete: Cascade)
+
+  @@map("hero_abilities")
+}
+
+model HeroBuild {
+  id          String    @id @default(cuid())
+  heroId      String
+  authorId    String
+  title       String
+  description String
+  type        BuildType
+  items       String[]  // Array of item names
+  emblem      String?   // Emblem configuration
+  isPublic    Boolean   @default(true)
+  likes       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  hero   Hero @relation(fields: [heroId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("hero_builds")
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  color     String?  // Hex color
+  createdAt DateTime @default(now())
+
+  // Relations
+  postTags PostTag[]
+  heroTags HeroTag[]
+
+  @@map("tags")
+}
+
+model PostTag {
+  id     String @id @default(cuid())
+  postId String
+  tagId  String
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, tagId])
+  @@map("post_tags")
+}
+
+model HeroTag {
+  id     String @id @default(cuid())
+  heroId String
+  tagId  String
+
+  hero Hero @relation(fields: [heroId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([heroId, tagId])
+  @@map("hero_tags")
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  reporterId String
+  postId    String?
+  commentId String?
+  reason    String
+  description String?
+  status    String   @default("PENDING") // PENDING, REVIEWED, RESOLVED, DISMISSED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  reporter User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  post     Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment  Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String   // LIKE, COMMENT, MENTION, CHAT, FRIEND_REQUEST, SYSTEM
+  isRead    Boolean  @default(false)
+  data      Json?    // Additional data
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Ban {
+  id        String   @id @default(cuid())
+  userId    String
+  reason    String
+  expiresAt DateTime?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("bans")
+}

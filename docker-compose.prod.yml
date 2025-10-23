@@ -1,0 +1,243 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ml_community_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mobile_legends_community}
+      POSTGRES_USER: ${POSTGRES_USER:-ml_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ml_password_2024}
+      # Оптимизация PostgreSQL для production
+      POSTGRES_MAX_CONNECTIONS: 200
+      PGDATA: /var/lib/postgresql/data/pgdata
+      # Настройки производительности
+      shared_buffers: 256MB
+      effective_cache_size: 768MB
+      work_mem: 4MB
+      maintenance_work_mem: 64MB
+      random_page_cost: 1.1
+      effective_io_concurrency: 200
+      wal_buffers: 16MB
+      min_wal_size: 1GB
+      max_wal_size: 4GB
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/prisma/init.sql:/docker-entrypoint-initdb.d/init.sql
+      # Бэкапы
+      - ./backups/postgres:/backups
+    networks:
+      - ml_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ml_user} -d ${POSTGRES_DB:-mobile_legends_community}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: ml_community_redis
+    command: >
+      redis-server 
+      --appendonly yes 
+      --maxmemory 1gb 
+      --maxmemory-policy allkeys-lru 
+      --save 900 1 
+      --save 300 10 
+      --save 60 10000
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      # Бэкапы
+      - ./backups/redis:/backups
+    networks:
+      - ml_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          memory: 256M
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
+    container_name: ml_community_backend
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ml_user}:${POSTGRES_PASSWORD:-ml_password_2024}@postgres:5432/${POSTGRES_DB:-mobile_legends_community}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-2024-mobile-legends}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      PORT: 3001
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://yourdomain.com}
+      # Настройки Node.js для production
+      NODE_OPTIONS: --max-old-space-size=4096
+      # Настройки логирования
+      LOG_LEVEL: warn
+      # Настройки безопасности
+      RATE_LIMIT_WINDOW_MS: "900000"
+      RATE_LIMIT_MAX_REQUESTS: "100"
+      # Настройки кластеризации
+      CLUSTER_MODE: "true"
+      WORKERS: "auto"
+    expose:
+      - "3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs/backend:/app/logs
+      # Исключаем node_modules в production
+      - /app/node_modules
+    networks:
+      - ml_network
+    command: npm run start:prod
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          memory: 1G
+
+  # Frontend React App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
+    container_name: ml_community_frontend
+    environment:
+      NODE_ENV: production
+      VITE_API_URL: ${API_URL:-https://yourdomain.com/api}
+      VITE_WS_URL: ${WS_URL:-wss://yourdomain.com}
+      # Настройки production
+      VITE_APP_ENV: production
+      # Отключаем source maps
+      GENERATE_SOURCEMAP: "false"
+    expose:
+      - "3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - ml_network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+        reservations:
+          memory: 512M
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: ml_community_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      # Кэширование и логи
+      - nginx_cache:/var/cache/nginx
+      - ./logs/nginx:/var/log/nginx
+      # Статические файлы и загрузки
+      - ./frontend/dist:/usr/share/nginx/html:ro
+      - ./uploads:/usr/share/nginx/uploads:ro
+      # SSL сертификаты Let's Encrypt
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - ml_network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          memory: 256M
+
+  # Certbot для SSL сертификатов
+  certbot:
+    image: certbot/certbot:latest
+    container_name: ml_community_certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - nginx
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  nginx_cache:
+    driver: local
+
+networks:
+  ml_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
