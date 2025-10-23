@@ -48,6 +48,15 @@ const CreatePostPage = () => {
   ];
 
   const onSubmit = async (data: CreatePostForm) => {
+    // Validate form data
+    const errors = validateForm(data, postValidation);
+    if (hasValidationErrors(errors)) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    setValidationErrors({});
+    
     try {
       await createPost(data).unwrap();
       navigate('/posts');
@@ -90,6 +99,16 @@ const CreatePostPage = () => {
         </div>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <ErrorMessage
+          error={error}
+          onRetry={() => {
+            // Retry logic if needed
+          }}
+        />
+      )}
+
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Basic Info */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
@@ -106,8 +125,10 @@ const CreatePostPage = () => {
                 placeholder="Enter a compelling title..."
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-              {errors.title && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.title.message}</p>
+              {(errors.title || validationErrors.title) && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errors.title?.message || validationErrors.title}
+                </p>
               )}
             </div>
 
@@ -160,8 +181,10 @@ const CreatePostPage = () => {
               placeholder="Write your post content here... You can use markdown formatting."
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             />
-            {errors.content && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.content.message}</p>
+            {(errors.content || validationErrors.content) && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errors.content?.message || validationErrors.content}
+              </p>
             )}
           </div>
         </div>

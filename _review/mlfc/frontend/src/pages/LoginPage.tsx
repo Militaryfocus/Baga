@@ -4,6 +4,8 @@ import { useForm } from 'react-hook-form';
 import { useAuth } from '../hooks/useAuth';
 import { useUI } from '../hooks/useUI';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { ErrorMessage } from '../components/ErrorMessage';
+import { authValidation, validateForm, hasValidationErrors } from '../utils/validation';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 
 interface LoginForm {
@@ -13,6 +15,7 @@ interface LoginForm {
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const { login, isLoading, error, clearError } = useAuth();
   const { openModal } = useUI();
   const navigate = useNavigate();
@@ -27,6 +30,18 @@ const LoginPage = () => {
   } = useForm<LoginForm>();
 
   const onSubmit = async (data: LoginForm) => {
+    // Validate form data
+    const errors = validateForm(data, {
+      email: authValidation.email,
+      password: authValidation.password
+    });
+    if (hasValidationErrors(errors)) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    setValidationErrors({});
+    
     try {
       await login(data).unwrap();
       navigate(from, { replace: true });
@@ -62,11 +77,7 @@ const LoginPage = () => {
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
-          {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            </div>
-          )}
+          <ErrorMessage error={error} onRetry={clearError} />
 
           <div className="space-y-4">
             <div>
@@ -91,8 +102,10 @@ const LoginPage = () => {
                   placeholder="Enter your email"
                 />
               </div>
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.email.message}</p>
+              {(errors.email || validationErrors.email) && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errors.email?.message || validationErrors.email}
+                </p>
               )}
             </div>
 
@@ -129,8 +142,10 @@ const LoginPage = () => {
                   )}
                 </button>
               </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.password.message}</p>
+              {(errors.password || validationErrors.password) && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errors.password?.message || validationErrors.password}
+                </p>
               )}
             </div>
           </div>
