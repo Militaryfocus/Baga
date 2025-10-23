@@ -1,8 +1,11 @@
 import prisma from '../config/database';
 import { CreatePostRequest, PostFilters, PaginationQuery } from '../types';
 import { createError } from '../middleware/errorHandler';
+import { CacheService } from './cacheService';
 
 export class PostService {
+  private cache = new CacheService();
+
   async createPost(authorId: string, data: CreatePostRequest) {
     const { title, content, category, heroId, tags = [] } = data;
 
@@ -69,6 +72,13 @@ export class PostService {
   }
 
   async getPosts(filters: PostFilters = {}, pagination: PaginationQuery = {}) {
+    const cacheKey = CacheService.getPostsKey(filters, pagination);
+    
+    // Try to get from cache first
+    const cached = await this.cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
     const {
       page = 1,
       limit = 10,
@@ -156,7 +166,7 @@ export class PostService {
       prisma.post.count({ where })
     ]);
 
-    return {
+    const result = {
       posts,
       pagination: {
         page,
@@ -165,9 +175,22 @@ export class PostService {
         totalPages: Math.ceil(total / limit)
       }
     };
+
+    // Cache the result for 2 minutes
+    await this.cache.set(cacheKey, result, 120);
+    
+    return result;
   }
 
   async getPostById(id: string) {
+    const cacheKey = CacheService.getPostKey(id);
+    
+    // Try to get from cache first
+    const cached = await this.cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const post = await prisma.post.findUnique({
       where: { id },
       include: {
@@ -346,6 +369,14 @@ export class PostService {
   }
 
   async getTrendingPosts(limit: number = 10) {
+    const cacheKey = CacheService.getTrendingPostsKey(limit);
+    
+    // Try to get from cache first
+    const cached = await this.cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const posts = await prisma.post.findMany({
       where: {
         isPublished: true,
@@ -383,6 +414,19 @@ export class PostService {
       take: limit
     });
 
+    // Cache the result for 5 minutes
+    await this.cache.set(cacheKey, posts, 300);
+    
     return posts;
+  }
+
+  // Cache invalidation methods
+  async invalidatePostCache(postId?: string) {
+    if (postId) {
+      await this.cache.del(CacheService.getPostKey(postId));
+    }
+    // Invalidate lists
+    await this.cache.delPattern('posts:*');
+    await this.cache.delPattern('posts:trending:*');
   }
 }

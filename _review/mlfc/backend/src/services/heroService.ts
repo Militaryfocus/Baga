@@ -1,9 +1,19 @@
 import prisma from '../config/database';
 import { HeroFilters, PaginationQuery } from '../types';
 import { createError } from '../middleware/errorHandler';
+import { CacheService } from './cacheService';
 
 export class HeroService {
+  private cache = new CacheService();
+
   async getHeroes(filters: HeroFilters = {}, pagination: PaginationQuery = {}) {
+    const cacheKey = CacheService.getHeroesKey(filters, pagination);
+    
+    // Try to get from cache first
+    const cached = await this.cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
     const {
       page = 1,
       limit = 20,
@@ -75,7 +85,7 @@ export class HeroService {
       prisma.hero.count({ where })
     ]);
 
-    return {
+    const result = {
       heroes,
       pagination: {
         page,
@@ -84,9 +94,22 @@ export class HeroService {
         totalPages: Math.ceil(total / limit)
       }
     };
+
+    // Cache the result for 5 minutes
+    await this.cache.set(cacheKey, result, 300);
+    
+    return result;
   }
 
   async getHeroById(id: string) {
+    const cacheKey = CacheService.getHeroKey(id);
+    
+    // Try to get from cache first
+    const cached = await this.cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const hero = await prisma.hero.findUnique({
       where: { id },
       include: {
@@ -149,6 +172,14 @@ export class HeroService {
   }
 
   async getHeroBySlug(slug: string) {
+    const cacheKey = CacheService.getHeroSlugKey(slug);
+    
+    // Try to get from cache first
+    const cached = await this.cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const hero = await prisma.hero.findUnique({
       where: { slug },
       include: {
@@ -247,6 +278,14 @@ export class HeroService {
   }
 
   async getPopularHeroes(limit: number = 10) {
+    const cacheKey = CacheService.getPopularHeroesKey(limit);
+    
+    // Try to get from cache first
+    const cached = await this.cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const heroes = await prisma.hero.findMany({
       where: { isActive: true },
       include: {
@@ -268,6 +307,14 @@ export class HeroService {
   }
 
   async searchHeroes(query: string, limit: number = 10) {
+    const cacheKey = CacheService.getSearchKey('heroes', query, limit);
+    
+    // Try to get from cache first
+    const cached = await this.cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const heroes = await prisma.hero.findMany({
       where: {
         isActive: true,
@@ -288,6 +335,23 @@ export class HeroService {
       take: limit
     });
 
+    // Cache the result for 5 minutes
+    await this.cache.set(cacheKey, heroes, 300);
+    
     return heroes;
+  }
+
+  // Cache invalidation methods
+  async invalidateHeroCache(heroId?: string, slug?: string) {
+    if (heroId) {
+      await this.cache.del(CacheService.getHeroKey(heroId));
+    }
+    if (slug) {
+      await this.cache.del(CacheService.getHeroSlugKey(slug));
+    }
+    // Invalidate lists
+    await this.cache.delPattern('heroes:*');
+    await this.cache.delPattern('heroes:popular:*');
+    await this.cache.delPattern('heroes:search:*');
   }
 }

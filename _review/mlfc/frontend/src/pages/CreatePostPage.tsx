@@ -4,6 +4,8 @@ import { useForm } from 'react-hook-form';
 import { usePosts } from '../hooks/usePosts';
 import { useHeroes } from '../hooks/useHeroes';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { ErrorMessage } from '../components/ErrorBoundary';
+import { postValidation, validateForm, hasValidationErrors } from '../utils/validation';
 import { ArrowLeft, Plus, X } from 'lucide-react';
 
 interface CreatePostForm {
@@ -16,7 +18,8 @@ interface CreatePostForm {
 
 const CreatePostPage = () => {
   const [newTag, setNewTag] = useState('');
-  const { createPost, isLoading } = usePosts();
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const { createPost, isLoading, error } = usePosts();
   const { heroes, fetchHeroes } = useHeroes();
   const navigate = useNavigate();
 

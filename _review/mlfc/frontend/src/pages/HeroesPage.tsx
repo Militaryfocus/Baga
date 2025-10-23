@@ -1,34 +1,87 @@
 import { useEffect, useState } from 'react';
 import { useHeroes } from '../hooks/useHeroes';
+import { usePagination } from '../hooks/usePagination';
+import { useSearchAndFilters } from '../hooks/useSearchAndFilters';
 import HeroCard from '../components/HeroCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { SearchInput } from '../components/SearchInput';
+import { FilterDropdown } from '../components/FilterDropdown';
+import { Pagination } from '../components/Pagination';
+import { ErrorMessage } from '../components/ErrorMessage';
 import { Search, Filter, Star } from 'lucide-react';
 
 const HeroesPage = () => {
-  const { heroes, roles, difficulties, filters, pagination, isLoading, fetchHeroes, setFilters, setPagination } = useHeroes();
-  const [searchQuery, setSearchQuery] = useState(filters.search || '');
+  const { 
+    heroes, 
+    roles, 
+    difficulties, 
+    filters, 
+    pagination, 
+    isLoading, 
+    error,
+    fetchHeroes, 
+    setFilters, 
+    setPagination,
+    clearError
+  } = useHeroes();
+  
   const [showFilters, setShowFilters] = useState(false);
+  
+  const paginationHook = usePagination({
+    initialPage: pagination.page,
+    initialLimit: pagination.limit,
+    onPageChange: (page) => setPagination({ ...pagination, page }),
+    onLimitChange: (limit) => setPagination({ ...pagination, limit, page: 1 })
+  });
+
+  const searchAndFilters = useSearchAndFilters({
+    initialFilters: filters,
+    onFiltersChange: (newFilters) => {
+      setFilters(newFilters);
+      setPagination({ ...pagination, page: 1 });
+    }
+  });
 
   useEffect(() => {
-    fetchHeroes({ filters, pagination });
-  }, [filters, pagination, fetchHeroes]);
+    fetchHeroes({ 
+      filters: searchAndFilters.filters, 
+      pagination: paginationHook.pagination 
+    });
+  }, [searchAndFilters.filters, paginationHook.pagination, fetchHeroes]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setFilters({ ...filters, search: searchQuery });
+  useEffect(() => {
+    paginationHook.setTotal(pagination.total);
+  }, [pagination.total, paginationHook]);
+
+  const handleSearch = (query: string) => {
+    searchAndFilters.setSearchQuery(query);
+    searchAndFilters.setFilter('search', query);
   };
 
-  const handleRoleChange = (role: string) => {
-    setFilters({ ...filters, role: role === 'ALL' ? undefined : role });
+  const handleRoleChange = (values: string[]) => {
+    searchAndFilters.setFilter('role', values.length > 0 ? values[0] : undefined);
   };
 
-  const handleDifficultyChange = (difficulty: string) => {
-    setFilters({ ...filters, difficulty: difficulty === 'ALL' ? undefined : parseInt(difficulty) });
+  const handleDifficultyChange = (values: string[]) => {
+    searchAndFilters.setFilter('difficulty', values.length > 0 ? parseInt(values[0]) : undefined);
   };
 
-  const handlePageChange = (page: number) => {
-    setPagination({ ...pagination, page });
-  };
+  const roleOptions = [
+    { value: 'TANK', label: 'Tank' },
+    { value: 'FIGHTER', label: 'Fighter' },
+    { value: 'ASSASSIN', label: 'Assassin' },
+    { value: 'MAGE', label: 'Mage' },
+    { value: 'MARKSMAN', label: 'Marksman' },
+    { value: 'SUPPORT', label: 'Support' }
+  ];
+
+  const difficultyOptions = [
+    { value: '1', label: '★' },
+    { value: '2', label: '★★' },
+    { value: '3', label: '★★★' },
+    { value: '4', label: '★★★★' },
+    { value: '5', label: '★★★★★' }
+  ];
 
   return (
     <div className="space-y-6">
@@ -44,18 +97,14 @@ const HeroesPage = () => {
 
       {/* Search and Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <form onSubmit={handleSearch} className="mb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search heroes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-        </form>
+        <div className="mb-4">
+          <SearchInput
+            placeholder="Search heroes..."
+            onSearch={handleSearch}
+            onClear={() => searchAndFilters.setFilter('search', undefined)}
+            className="w-full"
+          />
+        </div>
 
         <div className="flex items-center justify-between">
           <button
@@ -65,6 +114,15 @@ const HeroesPage = () => {
             <Filter className="h-4 w-4" />
             <span>Filters</span>
           </button>
+          
+          {searchAndFilters.hasActiveFilters && (
+            <button
+              onClick={searchAndFilters.clearAllFilters}
+              className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              Clear all filters
+            </button>
+          )}
         </div>
 
         {showFilters && (
@@ -73,42 +131,46 @@ const HeroesPage = () => {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Role
               </label>
-              <select
-                value={filters.role || 'ALL'}
-                onChange={(e) => handleRoleChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="ALL">All Roles</option>
-                {roles.map((role) => (
-                  <option key={role.role} value={role.role}>
-                    {role.role} ({role.count})
-                  </option>
-                ))}
-              </select>
+              <FilterDropdown
+                options={roleOptions}
+                selectedValues={filters.role ? [filters.role] : []}
+                onSelectionChange={handleRoleChange}
+                placeholder="Select role"
+                multiple={false}
+                showCounts={true}
+              />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Difficulty
               </label>
-              <select
-                value={filters.difficulty || 'ALL'}
-                onChange={(e) => handleDifficultyChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="ALL">All Difficulties</option>
-                {difficulties.map((diff) => (
-                  <option key={diff.difficulty} value={diff.difficulty}>
-                    {Array.from({ length: diff.difficulty }, (_, i) => (
-                      <Star key={i} className="h-3 w-3 fill-current" />
-                    ))} ({diff.count})
-                  </option>
-                ))}
-              </select>
+              <FilterDropdown
+                options={difficultyOptions}
+                selectedValues={filters.difficulty ? [filters.difficulty.toString()] : []}
+                onSelectionChange={handleDifficultyChange}
+                placeholder="Select difficulty"
+                multiple={false}
+                showCounts={true}
+              />
             </div>
           </div>
         )}
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <ErrorMessage
+          error={error}
+          onRetry={() => {
+            clearError();
+            fetchHeroes({ 
+              filters: searchAndFilters.filters, 
+              pagination: paginationHook.pagination 
+            });
+          }}
+        />
+      )}
 
       {/* Heroes Grid */}
       {isLoading ? (
@@ -136,41 +198,12 @@ const HeroesPage = () => {
       )}
 
       {/* Pagination */}
-      {pagination.totalPages > 1 && (
-        <div className="flex justify-center">
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => handlePageChange(pagination.page - 1)}
-              disabled={pagination.page === 1}
-              className="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            
-            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => handlePageChange(page)}
-                className={`px-3 py-2 text-sm font-medium rounded-lg ${
-                  page === pagination.page
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-              >
-                {page}
-              </button>
-            ))}
-            
-            <button
-              onClick={() => handlePageChange(pagination.page + 1)}
-              disabled={pagination.page === pagination.totalPages}
-              className="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+      <Pagination
+        currentPage={paginationHook.pagination.page}
+        totalPages={paginationHook.pagination.totalPages}
+        onPageChange={paginationHook.setPage}
+        className="mt-8"
+      />
     </div>
   );
 };

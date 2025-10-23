@@ -1,39 +1,71 @@
 import { useEffect, useState } from 'react';
 import { usePosts } from '../hooks/usePosts';
 import { useHeroes } from '../hooks/useHeroes';
+import { usePagination } from '../hooks/usePagination';
+import { useSearchAndFilters } from '../hooks/useSearchAndFilters';
 import PostCard from '../components/PostCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { SearchInput } from '../components/SearchInput';
+import { FilterDropdown } from '../components/FilterDropdown';
+import { Pagination } from '../components/Pagination';
+import { ErrorMessage } from '../components/ErrorMessage';
 import { Search, Filter, Plus } from 'lucide-react';
 
 const PostsPage = () => {
-  const { posts, filters, pagination, isLoading, fetchPosts, setFilters, setPagination } = usePosts();
+  const { 
+    posts, 
+    filters, 
+    pagination, 
+    isLoading, 
+    error,
+    fetchPosts, 
+    setFilters, 
+    setPagination,
+    clearError
+  } = usePosts();
   const { roles } = useHeroes();
-  const [searchQuery, setSearchQuery] = useState(filters.search || '');
   const [showFilters, setShowFilters] = useState(false);
+  
+  const paginationHook = usePagination({
+    initialPage: pagination.page,
+    initialLimit: pagination.limit,
+    onPageChange: (page) => setPagination({ ...pagination, page }),
+    onLimitChange: (limit) => setPagination({ ...pagination, limit, page: 1 })
+  });
+
+  const searchAndFilters = useSearchAndFilters({
+    initialFilters: filters,
+    onFiltersChange: (newFilters) => {
+      setFilters(newFilters);
+      setPagination({ ...pagination, page: 1 });
+    }
+  });
 
   useEffect(() => {
-    fetchPosts({ filters, pagination });
-  }, [filters, pagination, fetchPosts]);
+    fetchPosts({ 
+      filters: searchAndFilters.filters, 
+      pagination: paginationHook.pagination 
+    });
+  }, [searchAndFilters.filters, paginationHook.pagination, fetchPosts]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setFilters({ ...filters, search: searchQuery });
+  useEffect(() => {
+    paginationHook.setTotal(pagination.total);
+  }, [pagination.total, paginationHook]);
+
+  const handleSearch = (query: string) => {
+    searchAndFilters.setSearchQuery(query);
+    searchAndFilters.setFilter('search', query);
   };
 
-  const handleCategoryChange = (category: string) => {
-    setFilters({ ...filters, category: category === 'ALL' ? undefined : category });
+  const handleCategoryChange = (values: string[]) => {
+    searchAndFilters.setFilter('category', values.length > 0 ? values[0] : undefined);
   };
 
-  const handleRoleChange = (role: string) => {
-    setFilters({ ...filters, heroRole: role === 'ALL' ? undefined : role });
-  };
-
-  const handlePageChange = (page: number) => {
-    setPagination({ ...pagination, page });
+  const handleRoleChange = (values: string[]) => {
+    searchAndFilters.setFilter('heroRole', values.length > 0 ? values[0] : undefined);
   };
 
   const categories = [
-    { value: 'ALL', label: 'All Categories' },
     { value: 'GUIDES', label: 'Guides' },
     { value: 'NEWS', label: 'News' },
     { value: 'FANART', label: 'Fan Art' },
@@ -41,6 +73,12 @@ const PostsPage = () => {
     { value: 'DISCUSSION', label: 'Discussion' },
     { value: 'MEMES', label: 'Memes' },
   ];
+
+  const roleOptions = roles.map(role => ({
+    value: role.role,
+    label: role.role,
+    count: role.count
+  }));
 
   return (
     <div className="space-y-6">
@@ -60,18 +98,14 @@ const PostsPage = () => {
 
       {/* Search and Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <form onSubmit={handleSearch} className="mb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search posts..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-        </form>
+        <div className="mb-4">
+          <SearchInput
+            placeholder="Search posts..."
+            onSearch={handleSearch}
+            onClear={() => searchAndFilters.setFilter('search', undefined)}
+            className="w-full"
+          />
+        </div>
 
         <div className="flex items-center justify-between">
           <button
@@ -81,6 +115,15 @@ const PostsPage = () => {
             <Filter className="h-4 w-4" />
             <span>Filters</span>
           </button>
+          
+          {searchAndFilters.hasActiveFilters && (
+            <button
+              onClick={searchAndFilters.clearAllFilters}
+              className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              Clear all filters
+            </button>
+          )}
         </div>
 
         {showFilters && (
@@ -89,39 +132,46 @@ const PostsPage = () => {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Category
               </label>
-              <select
-                value={filters.category || 'ALL'}
-                onChange={(e) => handleCategoryChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {categories.map((category) => (
-                  <option key={category.value} value={category.value}>
-                    {category.label}
-                  </option>
-                ))}
-              </select>
+              <FilterDropdown
+                options={categories}
+                selectedValues={filters.category ? [filters.category] : []}
+                onSelectionChange={handleCategoryChange}
+                placeholder="Select category"
+                multiple={false}
+                showCounts={false}
+              />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Hero Role
               </label>
-              <select
-                value={filters.heroRole || 'ALL'}
-                onChange={(e) => handleRoleChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="ALL">All Roles</option>
-                {roles.map((role) => (
-                  <option key={role.role} value={role.role}>
-                    {role.role}
-                  </option>
-                ))}
-              </select>
+              <FilterDropdown
+                options={roleOptions}
+                selectedValues={filters.heroRole ? [filters.heroRole] : []}
+                onSelectionChange={handleRoleChange}
+                placeholder="Select role"
+                multiple={false}
+                showCounts={true}
+              />
             </div>
           </div>
         )}
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <ErrorMessage
+          error={error}
+          onRetry={() => {
+            clearError();
+            fetchPosts({ 
+              filters: searchAndFilters.filters, 
+              pagination: paginationHook.pagination 
+            });
+          }}
+        />
+      )}
 
       {/* Posts Grid */}
       {isLoading ? (
@@ -149,41 +199,12 @@ const PostsPage = () => {
       )}
 
       {/* Pagination */}
-      {pagination.totalPages > 1 && (
-        <div className="flex justify-center">
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => handlePageChange(pagination.page - 1)}
-              disabled={pagination.page === 1}
-              className="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            
-            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => handlePageChange(page)}
-                className={`px-3 py-2 text-sm font-medium rounded-lg ${
-                  page === pagination.page
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-              >
-                {page}
-              </button>
-            ))}
-            
-            <button
-              onClick={() => handlePageChange(pagination.page + 1)}
-              disabled={pagination.page === pagination.totalPages}
-              className="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+      <Pagination
+        currentPage={paginationHook.pagination.page}
+        totalPages={paginationHook.pagination.totalPages}
+        onPageChange={paginationHook.setPage}
+        className="mt-8"
+      />
     </div>
   );
 };
