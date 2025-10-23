@@ -184,6 +184,7 @@ model HeroAbility {
 
   hero Hero @relation(fields: [heroId], references: [id], onDelete: Cascade)
 
+  @@unique([heroId, name])
   @@map("hero_abilities")
 }
 
